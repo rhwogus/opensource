@@ -49,6 +49,23 @@ nav{
     font-weight:700;
 }
 
+.logo-button{
+    display:flex;
+    align-items:center;
+    gap:0;
+    padding:0;
+    background:none;
+    border:none;
+    border-radius:0;
+    color:white;
+    font-size:28px;
+    font-weight:700;
+}
+
+.logo-button:hover{
+    background:none;
+}
+
 /* 기본 상태 (PC) */
 
 .nav-links{
@@ -72,6 +89,23 @@ nav{
 }
 
 .nav-links a:hover{
+    opacity:0.7;
+}
+
+.nav-links button{
+    padding:0;
+    background:none;
+    border:none;
+    border-radius:0;
+    color:white;
+    font-size:18px;
+    font-weight:600;
+    white-space:nowrap;
+}
+
+.nav-links button:hover,
+.nav-links button.nav-active{
+    background:none;
     opacity:0.7;
 }
 
@@ -220,6 +254,22 @@ p{
 
 .add-button{
     display:flex;
+    align-items:center;
+    gap:10px;
+}
+
+.add-button input,
+.inline-form input{
+    width:auto;
+    min-width:140px;
+    margin:0;
+}
+
+.inline-form{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
 }
 /* ---------------- CARD ---------------- */
 
@@ -295,11 +345,25 @@ p{
 
     display:flex;
     justify-content:center;
-    align-items:center;
+    align-items:flex-end;
+    gap:12px;
 
     color:#5d7b5f;
     font-size:18px;
     font-weight:600;
+    padding:25px;
+}
+
+.bar{
+    width:42px;
+    background-color:var(--green);
+    border-radius:8px 8px 0 0;
+}
+
+.error-text{
+    color:#b3261e;
+    font-weight:600;
+    margin-bottom:15px;
 }
 
 /* ---------------- LANDING PAGE ---------------- */
@@ -403,6 +467,10 @@ p{
     color: var(--darkgreen);
 }
 
+.intro-text.show{
+    display:block;
+}
+
 .intro-btn:hover{
     background-color:#66ad6a;
 }
@@ -494,6 +562,22 @@ input:focus{
     }
 
     .card{
+        width:100%;
+    }
+
+    .top-bar{
+        flex-direction:column;
+        align-items:stretch;
+    }
+
+    .add-button,
+    .inline-form{
+        flex-direction:column;
+        align-items:stretch;
+    }
+
+    .add-button input,
+    .inline-form input{
         width:100%;
     }
 
