@@ -3,6 +3,7 @@ const fs = require("fs");
 const mysql = require("mysql2/promise");
 const path = require("path");
 const { URL } = require("url");
+const gptClient = require("./gptClient");
 
 loadEnvFile();
 
@@ -86,6 +87,30 @@ function parseIngredientsJson(value) {
     if (Array.isArray(value)) return value;
     if (!value) return [];
     return JSON.parse(value);
+}
+
+function parseCalories(value) {
+    if (typeof value === "number" && Number.isFinite(value)) {
+        return Math.round(value);
+    }
+    if (typeof value !== "string") {
+        return 0;
+    }
+    const match = value.match(/\d+/);
+    return match ? Number(match[0]) : 0;
+}
+
+function mapGptRecipes(gptResult) {
+    return (gptResult.recipes || []).map((recipe, index) => ({
+        id: `ai-${index}`,
+        name: recipe.title || "Recipe",
+        description: recipe.description || "",
+        ingredients: recipe.used_ingredients || [],
+        missingIngredients: recipe.missing_ingredients || [],
+        steps: recipe.steps || [],
+        calories: parseCalories(recipe.nutrition?.calories),
+        nutrition: recipe.nutrition || {}
+    }));
 }
 
 async function initializeDatabase() {
@@ -304,13 +329,50 @@ async function handleApi(req, res, url) {
     if (url.pathname === "/api/ingredients" && req.method === "POST") {
         const body = JSON.parse(await readBody(req) || "{}");
         const name = String(body.name || "").trim();
-        const expiresAt = body.expiresAt ? String(body.expiresAt) : null;
+        let expiresAt = body.expiresAt ? String(body.expiresAt) : null;
+        const useAiExpiry = body.autoExpiry !== false;
 
         if (!name) {
             return sendJson(res, 400, { message: "Ingredient name is required." });
         }
 
-        return sendJson(res, 201, await createIngredient(name, expiresAt));
+        let expiryMeta = null;
+        if (!expiresAt && useAiExpiry) {
+            try {
+                expiryMeta = await gptClient.estimateExpiry(name);
+                if (expiryMeta.expires_at) {
+                    expiresAt = expiryMeta.expires_at;
+                }
+            } catch (error) {
+                console.warn("GPT expiry estimate failed:", error.message);
+            }
+        }
+
+        const created = await createIngredient(name, expiresAt);
+        return sendJson(res, 201, {
+            ...created,
+            isEstimate: Boolean(expiryMeta?.is_estimate),
+            expiryNote: expiryMeta?.note || null,
+            aiMessage: expiryMeta?.chat_reply || null
+        });
+    }
+
+    if (url.pathname === "/api/recommend" && req.method === "POST") {
+        const ingredients = await getIngredients("");
+        const names = ingredients.map(item => item.name);
+
+        if (names.length === 0) {
+            return sendJson(res, 400, {
+                message: "Add at least one ingredient in Fridge before requesting recommendations."
+            });
+        }
+
+        const gptResult = await gptClient.recommendRecipes(names);
+        return sendJson(res, 200, {
+            recipes: mapGptRecipes(gptResult),
+            chat_reply: gptResult.chat_reply || "",
+            error: gptResult.error || null
+        });
     }
 
     if (url.pathname === "/api/recipes" && req.method === "GET") {
