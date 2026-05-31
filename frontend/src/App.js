@@ -119,7 +119,7 @@ function Home({ navigate }) {
             <div className="feature-grid">
 
                 <div className="feature-card">
-                    <div className="feature-icon">🥬</div>
+                    <div className="feature-icon">🛒</div>
                     <h3>Ingredient Management</h3>
                     <p>
                         Easily manage ingredients and track expiration dates.
@@ -127,7 +127,7 @@ function Home({ navigate }) {
                 </div>
 
                 <div className="feature-card">
-                    <div className="feature-icon">🍳</div>
+                    <div className="feature-icon">🍽️</div>
                     <h3>Recipe Recommendation</h3>
                     <p>
                         Receive recipes based on ingredients available in your fridge.
