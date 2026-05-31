@@ -47,11 +47,15 @@ function Nav({ page, navigate }) {
     const [open, setOpen] = useState(false);
 
     return (
-        <nav>
+        <nav className="navbar">
             <div className="logo">
-                <button className="logo-button" type="button" onClick={() => navigate("home")}>
-                    <img src="/logo.png" width="52" height="52" alt="" />
-                    ReciFridge
+                <button
+                    className="logo-button"
+                    type="button"
+                    onClick={() => navigate("home")}
+                >
+                    <img src="/logo.png" alt="ReciFridge" />
+`                   <span>ReciFridge</span>
                 </button>
             </div>
 
@@ -75,50 +79,77 @@ function Nav({ page, navigate }) {
                     </li>
                 ))}
             </ul>
+
+
+
         </nav>
     );
 }
 
 function Home({ navigate }) {
-    const [openIntro, setOpenIntro] = useState(null);
-    const introItems = [
-        ["Ingredient Management", "Organize and track stored ingredients and expiration dates efficiently."],
-        ["AI Recipe Recommendation", "Receive optimized recipe suggestions based on your current ingredients."],
-        ["Nutrition Dashboard", "Visualize nutritional information from consumed meals."],
-        ["AI Chatbot Guide", "Get real-time cooking assistance and answers while preparing meals."]
-    ];
-
     return (
-        <div id="landing">
-            <div className="landing-left">
-                <h1>Welcome to the ReciFridge</h1>
-                <div id="intro">
-                    <p>Let's make a tasty meal only using the ingredients from your fridge!</p>
-                    <br />
-                    <p>
-                        Our service helps users manage the ingredients in their refrigerator and
-                        recommends the most suitable recipes based on available ingredients.
-                    </p>
-                    <br />
-                    <p>Using AI, it reduces food waste and supports healthier eating habits.</p>
+        <div className="landing-modern">
+
+            <div className="hero">
+                <div className="hero-logo">
+                    <img src="/logo.png" alt="FreshMeal" />
                 </div>
+            <div className="vegetable-container">
+                <span className="veg veg1">🥕</span>
+                <span className="veg veg2">🥦</span>
+                <span className="veg veg3">🍅</span>
+                <span className="veg veg4">🥬</span>
+                <span className="veg veg5">🧄</span>
+                <span className="veg veg6">🌽</span>
+            </div>
+                <h1>FreshMeal</h1>
+
+                <p className="hero-subtitle">
+                    Create healthy meals with ingredients from your fridge
+                </p>
+
+                <button
+                    className="hero-btn"
+                    onClick={() => navigate("fridge")}
+                >
+                    Get Started
+                </button>
             </div>
 
-            <div className="landing-right">
-                <div id="intro-list">
-                    {introItems.map(([title, text], index) => (
-                        <div className="intro-item" key={title}>
-                            <button className="intro-btn" type="button" onClick={() => setOpenIntro(openIntro === index ? null : index)}>
-                                {title}
-                            </button>
-                            {openIntro === index && <p className="intro-text show">{text}</p>}
-                        </div>
-                    ))}
+            <div className="feature-grid">
+
+                <div className="feature-card">
+                    <div className="feature-icon">🥬</div>
+                    <h3>Ingredient Management</h3>
+                    <p>
+                        Easily manage ingredients and track expiration dates.
+                    </p>
                 </div>
 
-                <button className="start-btn" type="button" onClick={() => navigate("fridge")}>
-                    Let's Start
-                </button>
+                <div className="feature-card">
+                    <div className="feature-icon">🍳</div>
+                    <h3>Recipe Recommendation</h3>
+                    <p>
+                        Receive recipes based on ingredients available in your fridge.
+                    </p>
+                </div>
+
+                <div className="feature-card">
+                    <div className="feature-icon">📊</div>
+                    <h3>Nutrition Dashboard</h3>
+                    <p>
+                        Monitor calorie intake and nutrition balance.
+                    </p>
+                </div>
+
+                <div className="feature-card">
+                    <div className="feature-icon">🤖</div>
+                    <h3>AI Assistant</h3>
+                    <p>
+                        Get cooking guidance and ingredient suggestions instantly.
+                    </p>
+                </div>
+
             </div>
         </div>
     );
