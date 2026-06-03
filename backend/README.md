@@ -80,9 +80,6 @@ DELETE  /api/ingredients
 POST    /api/recommend
 ```
 
-## 환경변수
-
-`backend/.env`는 GitHub에 올리지 않습니다.
 
 ```text
 PORT=5001
