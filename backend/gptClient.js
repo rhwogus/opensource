@@ -39,8 +39,8 @@ function runGpt(command, arg = "") {
     });
 }
 
-function estimateExpiry(name) {
-    return runGpt("expiry", name);
+function estimateExpiry(name, baseDate = "") {
+    return runGpt("expiry", JSON.stringify({ name, baseDate }));
 }
 
 function recommendRecipes(ingredientNames) {

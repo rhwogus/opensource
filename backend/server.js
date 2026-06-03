@@ -291,8 +291,9 @@ async function handleApi(req, res, url) {
     if (url.pathname === "/api/ingredients" && req.method === "POST") {
         const body = JSON.parse(await readBody(req) || "{}");
         const name = String(body.name || "").trim();
-        let expiresAt = body.expiresAt ? String(body.expiresAt) : null;
         const useAiExpiry = body.autoExpiry !== false;
+        const baseDate = body.baseDate ? String(body.baseDate) : "";
+        let expiresAt = !useAiExpiry && body.expiresAt ? String(body.expiresAt) : null;
 
         if (!name) {
             return sendJson(res, 400, { message: "Ingredient name is required." });
@@ -301,7 +302,7 @@ async function handleApi(req, res, url) {
         let expiryMeta = null;
         if (!expiresAt && useAiExpiry) {
             try {
-                expiryMeta = await gptClient.estimateExpiry(name);
+                expiryMeta = await gptClient.estimateExpiry(name, baseDate);
                 if (expiryMeta.error) {
                     return sendJson(res, 502, {
                         message: expiryMeta.error,

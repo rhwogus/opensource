@@ -159,7 +159,7 @@ function Fridge() {
     const [ingredients, setIngredients] = useState([]);
     const [query, setQuery] = useState("");
     const [name, setName] = useState("");
-    const [expiresAt, setExpiresAt] = useState("");
+    const [baseDate, setBaseDate] = useState("");
     const [error, setError] = useState("");
 
     const loadIngredients = useCallback(async (search = query) => {
@@ -178,10 +178,10 @@ function Fridge() {
         try {
             await api("/api/ingredients", {
                 method: "POST",
-                body: JSON.stringify({ name, expiresAt: expiresAt || null })
+                body: JSON.stringify({ name, baseDate: baseDate || null })
             });
             setName("");
-            setExpiresAt("");
+            setBaseDate("");
             await loadIngredients();
         } catch (error) {
             setError(error.message);
@@ -209,7 +209,13 @@ function Fridge() {
 
                 <form className="add-button" onSubmit={handleAdd}>
                     <input value={name} onChange={event => setName(event.target.value)} placeholder="Ingredient name" required />
-                    <input type="date" value={expiresAt} onChange={event => setExpiresAt(event.target.value)} />
+                    <input
+                        type="date"
+                        value={baseDate}
+                        onChange={event => setBaseDate(event.target.value)}
+                        aria-label="Base date for expiry estimate"
+                        title="Base date for expiry estimate"
+                    />
                     <button type="submit">Add Ingredient</button>
                 </form>
             </div>

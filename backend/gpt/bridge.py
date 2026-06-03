@@ -2,6 +2,7 @@
 
 import json
 import sys
+from datetime import date
 
 
 def main() -> None:
@@ -14,8 +15,22 @@ def main() -> None:
     if command == "expiry":
         from gpt.service import estimate_expiry
 
-        name = sys.argv[2] if len(sys.argv) > 2 else ""
-        print(json.dumps(estimate_expiry(name), ensure_ascii=False))
+        raw = sys.argv[2] if len(sys.argv) > 2 else ""
+        base_date = None
+        try:
+            payload = json.loads(raw)
+        except json.JSONDecodeError:
+            payload = {"name": raw}
+
+        if isinstance(payload, dict):
+            name = payload.get("name", "")
+            base_date_raw = payload.get("baseDate") or payload.get("base_date")
+            if base_date_raw:
+                base_date = date.fromisoformat(str(base_date_raw))
+        else:
+            name = str(payload)
+
+        print(json.dumps(estimate_expiry(name, base_date=base_date), ensure_ascii=False))
         return
 
     if command == "recipes":
