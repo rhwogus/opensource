@@ -7,7 +7,7 @@ BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "_draft_flask" / "data"
 DB_PATH = DATA_DIR / "ingredients.db"
 
-# 프로젝트 루트의 .env 로드
+# backend/.env 로드
 load_dotenv(BASE_DIR / ".env")
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
