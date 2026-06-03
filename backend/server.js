@@ -1,7 +1,7 @@
 const http = require("http");
 const fs = require("fs");
-const mysql = require("mysql2/promise");
 const path = require("path");
+const { DatabaseSync } = require("node:sqlite");
 const { URL } = require("url");
 const gptClient = require("./gptClient");
 
@@ -9,16 +9,9 @@ loadEnvFile();
 
 const PORT = process.env.PORT || 5000;
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || "http://localhost:3000";
+const DB_PATH = process.env.SQLITE_DB_PATH || path.join(__dirname, "data", "recifridge.sqlite");
 
-const dbConfig = {
-    host: process.env.DB_HOST || "localhost",
-    port: Number(process.env.DB_PORT || 3306),
-    user: process.env.DB_USER || "root",
-    password: process.env.DB_PASSWORD || "",
-    database: process.env.DB_NAME || "recifridge"
-};
-
-let pool;
+let db;
 
 function loadEnvFile() {
     const envPath = path.join(__dirname, ".env");
@@ -114,93 +107,71 @@ function mapGptRecipes(gptResult) {
 }
 
 async function initializeDatabase() {
-    const bootstrapConnection = await mysql.createConnection({
-        host: dbConfig.host,
-        port: dbConfig.port,
-        user: dbConfig.user,
-        password: dbConfig.password,
-        multipleStatements: true
-    });
+    fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+    db = new DatabaseSync(DB_PATH);
+    db.exec("PRAGMA foreign_keys = ON");
 
-    await bootstrapConnection.query(`CREATE DATABASE IF NOT EXISTS \`${dbConfig.database}\``);
-    await bootstrapConnection.end();
-
-    pool = mysql.createPool({
-        ...dbConfig,
-        waitForConnections: true,
-        connectionLimit: 10,
-        namedPlaceholders: true
-    });
-
-    await pool.query(`
+    db.exec(`
         CREATE TABLE IF NOT EXISTS ingredients (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            name VARCHAR(255) NOT NULL,
-            expires_at DATE NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    `);
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            expires_at TEXT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
 
-    await pool.query(`
         CREATE TABLE IF NOT EXISTS recipes (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            name VARCHAR(255) NOT NULL,
-            ingredients_json JSON NOT NULL,
-            calories INT NOT NULL
-        )
-    `);
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            ingredients_json TEXT NOT NULL,
+            calories INTEGER NOT NULL
+        );
 
-    await pool.query(`
         CREATE TABLE IF NOT EXISTS meals (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            meal_type VARCHAR(100) NOT NULL,
-            name VARCHAR(255) NOT NULL,
-            calories INT NOT NULL,
-            eaten_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            meal_type TEXT NOT NULL,
+            name TEXT NOT NULL,
+            calories INTEGER NOT NULL,
+            eaten_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
     `);
 
     await seedInitialData();
 }
 
 async function seedInitialData() {
-    const [[ingredientCount]] = await pool.query("SELECT COUNT(*) AS count FROM ingredients");
+    const ingredientCount = db.prepare("SELECT COUNT(*) AS count FROM ingredients").get();
     if (ingredientCount.count === 0) {
-        await pool.query(
-            "INSERT INTO ingredients (name, expires_at) VALUES (?, ?), (?, ?), (?, ?)",
-            ["Milk 1L", "2026-06-03", "Egg", "2026-05-30", "Salt", null]
-        );
+        const insertIngredient = db.prepare("INSERT INTO ingredients (name, expires_at) VALUES (?, ?)");
+        insertIngredient.run("Milk 1L", "2026-06-03");
+        insertIngredient.run("Egg", "2026-05-30");
+        insertIngredient.run("Salt", null);
     }
 
-    const [[recipeCount]] = await pool.query("SELECT COUNT(*) AS count FROM recipes");
+    const recipeCount = db.prepare("SELECT COUNT(*) AS count FROM recipes").get();
     if (recipeCount.count === 0) {
-        await pool.query(
-            "INSERT INTO recipes (name, ingredients_json, calories) VALUES (?, ?, ?), (?, ?, ?), (?, ?, ?)",
-            [
-                "Creamy Egg Toast", JSON.stringify(["Milk", "Egg", "Salt"]), 520,
-                "Simple Omelette", JSON.stringify(["Egg", "Salt"]), 340,
-                "Milk Pasta", JSON.stringify(["Milk", "Salt"]), 680
-            ]
-        );
+        const insertRecipe = db.prepare("INSERT INTO recipes (name, ingredients_json, calories) VALUES (?, ?, ?)");
+        insertRecipe.run("Creamy Egg Toast", JSON.stringify(["Milk", "Egg", "Salt"]), 520);
+        insertRecipe.run("Simple Omelette", JSON.stringify(["Egg", "Salt"]), 340);
+        insertRecipe.run("Milk Pasta", JSON.stringify(["Milk", "Salt"]), 680);
     }
 
-    const [[mealCount]] = await pool.query("SELECT COUNT(*) AS count FROM meals");
+    const mealCount = db.prepare("SELECT COUNT(*) AS count FROM meals").get();
     if (mealCount.count === 0) {
-        await pool.query(
-            "INSERT INTO meals (meal_type, name, calories) VALUES (?, ?, ?), (?, ?, ?), (?, ?, ?)",
-            ["Breakfast", "Sandwich", 500, "Lunch", "Pasta", 800, "Dinner", "Salad", 600]
-        );
+        const insertMeal = db.prepare("INSERT INTO meals (meal_type, name, calories) VALUES (?, ?, ?)");
+        insertMeal.run("Breakfast", "Sandwich", 500);
+        insertMeal.run("Lunch", "Pasta", 800);
+        insertMeal.run("Dinner", "Salad", 600);
     }
 }
 
 async function getIngredients(query) {
     const search = `%${query}%`;
-    const [rows] = await pool.query(
+    const rows = db.prepare(
         `
             SELECT
                 id,
                 name,
-                DATE_FORMAT(expires_at, '%Y-%m-%d') AS expiresAt
+                expires_at AS expiresAt
             FROM ingredients
             WHERE LOWER(name) LIKE LOWER(?)
             ORDER BY
@@ -208,28 +179,23 @@ async function getIngredients(query) {
                 expires_at ASC,
                 id DESC
         `,
-        [search]
-    );
+    ).all(search);
 
     return rows.map(ingredientView);
 }
 
 async function createIngredient(name, expiresAt) {
-    const [result] = await pool.query(
-        "INSERT INTO ingredients (name, expires_at) VALUES (?, ?)",
-        [name, expiresAt]
-    );
+    const result = db.prepare("INSERT INTO ingredients (name, expires_at) VALUES (?, ?)").run(name, expiresAt);
 
-    const [rows] = await pool.query(
-        "SELECT id, name, DATE_FORMAT(expires_at, '%Y-%m-%d') AS expiresAt FROM ingredients WHERE id = ?",
-        [result.insertId]
-    );
+    const row = db.prepare(
+        "SELECT id, name, expires_at AS expiresAt FROM ingredients WHERE id = ?"
+    ).get(result.lastInsertRowid);
 
-    return ingredientView(rows[0]);
+    return ingredientView(row);
 }
 
 async function getRecipes() {
-    const [rows] = await pool.query(`
+    const rows = db.prepare(`
         SELECT
             id,
             name,
@@ -237,7 +203,7 @@ async function getRecipes() {
             calories
         FROM recipes
         ORDER BY id ASC
-    `);
+    `).all();
 
     return rows.map(recipe => ({
         ...recipe,
@@ -246,7 +212,7 @@ async function getRecipes() {
 }
 
 async function getMeals() {
-    const [rows] = await pool.query(`
+    return db.prepare(`
         SELECT
             id,
             meal_type AS type,
@@ -254,42 +220,38 @@ async function getMeals() {
             calories
         FROM meals
         ORDER BY id ASC
-    `);
-
-    return rows;
+    `).all();
 }
 
 async function createMeal(type, name, calories) {
-    const [result] = await pool.query(
-        "INSERT INTO meals (meal_type, name, calories) VALUES (?, ?, ?)",
-        [type, name, calories]
-    );
+    const result = db.prepare("INSERT INTO meals (meal_type, name, calories) VALUES (?, ?, ?)").run(type, name, calories);
 
-    const [rows] = await pool.query(
-        "SELECT id, meal_type AS type, name, calories FROM meals WHERE id = ?",
-        [result.insertId]
-    );
+    return db.prepare(
+        "SELECT id, meal_type AS type, name, calories FROM meals WHERE id = ?"
+    ).get(result.lastInsertRowid);
+}
 
-    return rows[0];
+function getDayModifier(daysAgo) {
+    return `-${daysAgo} days`;
 }
 
 async function getDashboardData() {
-    const [[summary]] = await pool.query(`
+    const summary = db.prepare(`
         SELECT
             COALESCE(SUM(calories), 0) AS totalCalories,
             COUNT(*) AS mealCount
         FROM meals
-    `);
+    `).get();
 
-    const [weeklyRows] = await pool.query(`
+    const weeklyRows = db.prepare(`
         SELECT
-            DATE(eaten_at) AS day,
+            date(eaten_at) AS day,
             SUM(calories) AS calories
         FROM meals
-        WHERE eaten_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
-        GROUP BY DATE(eaten_at)
+        WHERE date(eaten_at) >= date('now', ?)
+        GROUP BY date(eaten_at)
         ORDER BY day ASC
-    `);
+    `).all(getDayModifier(6));
 
     const totalCalories = Number(summary.totalCalories);
     const dailyGoal = 2000;
@@ -317,8 +279,8 @@ async function handleApi(req, res, url) {
     }
 
     if (url.pathname === "/api/health" && req.method === "GET") {
-        await pool.query("SELECT 1");
-        return sendJson(res, 200, { status: "ok", database: dbConfig.database });
+        db.prepare("SELECT 1").get();
+        return sendJson(res, 200, { status: "ok", database: DB_PATH });
     }
 
     if (url.pathname === "/api/ingredients" && req.method === "GET") {
@@ -417,11 +379,11 @@ initializeDatabase()
     .then(() => {
         server.listen(PORT, () => {
             console.log(`ReciFridge API is running at http://localhost:${PORT}`);
-            console.log(`MySQL database: ${dbConfig.database}`);
+            console.log(`SQLite database: ${DB_PATH}`);
         });
     })
     .catch(error => {
-        console.error("Failed to initialize MySQL database.");
+        console.error("Failed to initialize SQLite database.");
         console.error(error.message);
         process.exit(1);
     });

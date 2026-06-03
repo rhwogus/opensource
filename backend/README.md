@@ -17,7 +17,7 @@ backend/
 
 ## Node 백엔드 실행
 
-MySQL을 먼저 실행한 뒤 진행합니다.
+SQLite를 사용하므로 별도 DB 서버를 실행할 필요가 없습니다.
 
 ```bash
 cd backend
@@ -27,6 +27,7 @@ npm start
 ```
 
 기본 실행 주소는 `.env`의 `PORT` 값에 따라 정해집니다. macOS에서는 5000 포트를 AirPlay가 쓰는 경우가 있어 `PORT=5001`을 권장합니다.
+SQLite DB 파일은 기본적으로 `backend/data/recifridge.sqlite`에 생성됩니다.
 
 ## Node API
 
@@ -83,11 +84,7 @@ POST    /api/recommend
 
 ```text
 PORT=5001
-DB_HOST=localhost
-DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=your_mysql_password
-DB_NAME=recifridge
+SQLITE_DB_PATH=./data/recifridge.sqlite
 OPENAI_API_KEY=sk-your-api-key
 OPENAI_MODEL=gpt-4o-mini
 FLASK_SECRET_KEY=change-me-in-production
