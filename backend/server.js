@@ -302,11 +302,19 @@ async function handleApi(req, res, url) {
         if (!expiresAt && useAiExpiry) {
             try {
                 expiryMeta = await gptClient.estimateExpiry(name);
+                if (expiryMeta.error) {
+                    return sendJson(res, 502, {
+                        message: expiryMeta.error,
+                        aiMessage: expiryMeta.chat_reply || expiryMeta.error
+                    });
+                }
                 if (expiryMeta.expires_at) {
                     expiresAt = expiryMeta.expires_at;
                 }
             } catch (error) {
-                console.warn("GPT expiry estimate failed:", error.message);
+                return sendJson(res, 502, {
+                    message: `GPT expiry estimate failed: ${error.message}`
+                });
             }
         }
 
