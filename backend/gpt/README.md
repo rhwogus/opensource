@@ -1,75 +1,77 @@
-# GPT 모듈 — 파이프라인
+# GPT 모듈 — Flask 기준 파이프라인
+
+ReciFridge에서 GPT 모듈은 AI 유통기한 추정, 레시피 추천, 레시피 관련 질문 답변을 담당합니다. 공식 백엔드는 Flask + SQLite 기준입니다.
 
 ## 전체 구조
 
 ```text
-React (프론트)
+React Frontend
     ↓ HTTP
-Node  server.js  ──→  MySQL
-    ↓ subprocess
-Python  gpt.bridge  →  service.py  →  OpenAI API
+Flask API (_draft_flask/routes.py)
+    ↓
+SQLite (services/database.py)
+    ↓
+GPT service.py → OpenAI API
 ```
 
 | 구간 | 역할 |
 |------|------|
-| `server.js` | API, DB 저장, GPT 호출 |
-| `gptClient.js` | `python -m gpt.bridge` 실행, JSON 파싱 |
-| `gpt/bridge.py` | `expiry` / `recipes` 명령 분기 |
-| `gpt/service.py` | OpenAI 호출 |
+| `_draft_flask/routes.py` | 프론트가 호출하는 Flask API |
+| `services/database.py` | SQLite 저장/조회 |
+| `services/gpt.py` | Flask에서 GPT 모듈을 import하기 위한 wrapper |
+| `gpt/service.py` | OpenAI 호출 및 응답 정규화 |
+| `gpt/prompts.py` | 유통기한/레시피/챗봇 프롬프트 |
 
----
-
-## 파이프라인 1 — 재료 추가 + 유통기한
+## 파이프라인 1 — 재료 추가 + 유통기한 추정
 
 ```text
-POST /api/ingredients  { "name": "계란" }
-    → server.js (expiresAt 없으면)
-    → gptClient.estimateExpiry("계란")
-    → python -m gpt.bridge expiry "계란"
-    → estimate_expiry() → OpenAI
-    → { expires_at, shelf_life_days, chat_reply, ... }
-    → MySQL ingredients INSERT
-    → 응답 (저장된 재료 + 안내)
+POST /api/ingredients { "name": "계란", "autoExpiry": true }
+    → Flask routes.py
+    → estimate_expiry("계란")
+    → GPT가 expires_at, shelf_life_days 추정
+    → services/database.py가 SQLite ingredients 테이블에 저장
+    → 저장된 재료 + aiMessage 응답
 ```
 
-- 사용자는 **이름만** 입력. `expires_at`은 GPT가 채움 (참고용 추정).
-- GPT 실패 시: 유통기한 없이 저장 가능 (`autoExpiry: false`면 GPT 생략).
-
----
+사용자가 날짜를 직접 입력하면 `autoExpiry: false`로 GPT 추정을 생략할 수 있습니다.
 
 ## 파이프라인 2 — 레시피 추천
 
 ```text
 POST /api/recommend
-    → server.js
-    → MySQL에서 재료 이름 목록 조회
-    → gptClient.recommendRecipes(["계란", "양파", ...])
-    → python -m gpt.bridge recipes '["계란","양파"]'
-    → recommend_recipes() → OpenAI (JSON)
-    → server.js가 카드 형태로 변환
-    → { recipes[], chat_reply }
+    → Flask routes.py
+    → SQLite에서 저장된 재료 목록 조회
+    → recommend_recipes(ingredients)
+    → GPT가 recipes, chat_reply, suggested_questions 생성
+    → 프론트 카드 형식으로 변환해 응답
 ```
 
-- DB 샘플 레시피: `GET /api/recipes`
-- **AI 추천**: `POST /api/recommend` 만 사용
+`recommend_recipes()`는 문자열 배열과 DB dict 배열을 모두 받을 수 있습니다. DB에서 아래처럼 넘어와도 `name`만 뽑아 GPT에 전달합니다.
 
----
+```json
+[
+  {"id": 1, "name": "계란", "expiresAt": "2026-06-10"},
+  {"id": 2, "name": "양파", "expiresAt": "2026-06-17"}
+]
+```
 
-## 환경
+## 파이프라인 3 — 레시피 질문 챗봇
 
-`backend/.env` (Git 제외):
+```text
+POST /api/chat { "question": "버터 없이 만들 수 있어?", "recipes": [...] }
+    → Flask routes.py
+    → ask_recipe_question(question, ingredients, recipes)
+    → GPT가 reply, suggested_questions 응답
+```
 
-- `OPENAI_API_KEY`, `OPENAI_MODEL` (기본 `gpt-4o-mini`)
-- `PORT` (권장 `5001`)
-- Python: 프로젝트 `.venv` 또는 `PYTHON_PATH`
-
-로컬 단독 테스트:
+## 로컬 GPT 단독 테스트
 
 ```bash
-cd backend && source ../.venv/bin/activate
+cd backend
+source ../.venv/bin/activate
 pip install -r gpt/requirements.txt
 python -m gpt.cli --expiry 계란
 python -m gpt.cli --sample
 ```
 
-예시 변수: `backend/.env.example`
+`backend/.env`에 `OPENAI_API_KEY`가 있어야 실제 GPT 호출이 동작합니다.
