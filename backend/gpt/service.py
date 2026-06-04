@@ -22,11 +22,11 @@ def is_api_key_configured() -> bool:
     return key.startswith("sk-")
 
 
-def recommend_recipes(ingredients: list[str]) -> dict:
+def recommend_recipes(ingredients: list) -> dict:
     cleaned_ingredients = [
-        ingredient.strip()
+        name
         for ingredient in ingredients
-        if isinstance(ingredient, str) and ingredient.strip()
+        if (name := _extract_ingredient_name(ingredient))
     ]
 
     if not cleaned_ingredients:
@@ -42,6 +42,16 @@ def recommend_recipes(ingredients: list[str]) -> dict:
         return _error_response("GPT 응답을 JSON으로 해석하지 못했습니다.")
     except OpenAIError as exc:
         return _error_response(f"GPT API 호출에 실패했습니다: {exc}")
+
+
+def _extract_ingredient_name(ingredient) -> str:
+    if isinstance(ingredient, str):
+        return ingredient.strip()
+
+    if isinstance(ingredient, dict):
+        return str(ingredient.get("name", "")).strip()
+
+    return ""
 
 
 def estimate_expiry(ingredient_name: str, *, base_date: Optional[date] = None) -> dict:
