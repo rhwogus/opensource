@@ -8,8 +8,10 @@ from openai import OpenAI, OpenAIError
 
 from gpt.config import OPENAI_API_KEY, OPENAI_MODEL
 from gpt.prompts import (
+    CHAT_SYSTEM_PROMPT,
     EXPIRY_SYSTEM_PROMPT,
     SYSTEM_PROMPT,
+    build_chat_prompt,
     build_expiry_prompt,
     build_user_prompt,
 )
@@ -42,6 +44,29 @@ def recommend_recipes(ingredients: list) -> dict:
         return _error_response("GPT 응답을 JSON으로 해석하지 못했습니다.")
     except OpenAIError as exc:
         return _error_response(f"GPT API 호출에 실패했습니다: {exc}")
+
+
+def ask_recipe_question(question: str, ingredients: Optional[list] = None, recipes: Optional[list] = None) -> dict:
+    question = (question or "").strip()
+    if not question:
+        return _chat_error("질문을 입력해 주세요.")
+
+    cleaned_ingredients = [
+        name
+        for ingredient in (ingredients or [])
+        if (name := _extract_ingredient_name(ingredient))
+    ]
+
+    try:
+        data = _call_gpt_json(
+            CHAT_SYSTEM_PROMPT,
+            build_chat_prompt(question, cleaned_ingredients, recipes or []),
+        )
+        return _normalize_chat_response(data)
+    except json.JSONDecodeError:
+        return _chat_error("GPT 응답을 JSON으로 해석하지 못했습니다.")
+    except OpenAIError as exc:
+        return _chat_error(f"GPT API 호출에 실패했습니다: {exc}")
 
 
 def _extract_ingredient_name(ingredient) -> str:
@@ -102,9 +127,37 @@ def _normalize_recipe_response(data: dict) -> dict:
     if not isinstance(chat_reply, str):
         chat_reply = "추천 결과를 확인해 주세요."
 
+    suggested_questions = data.get("suggested_questions", [])
+    if not isinstance(suggested_questions, list):
+        suggested_questions = []
+
     return {
         "recipes": recipes,
         "chat_reply": chat_reply,
+        "suggested_questions": [
+            str(question).strip()
+            for question in suggested_questions
+            if str(question).strip()
+        ][:3],
+    }
+
+
+def _normalize_chat_response(data: dict) -> dict:
+    reply = data.get("reply", "")
+    if not isinstance(reply, str) or not reply.strip():
+        reply = "질문에 답변할 내용을 찾지 못했어요."
+
+    suggested_questions = data.get("suggested_questions", [])
+    if not isinstance(suggested_questions, list):
+        suggested_questions = []
+
+    return {
+        "reply": reply.strip(),
+        "suggested_questions": [
+            str(question).strip()
+            for question in suggested_questions
+            if str(question).strip()
+        ][:3],
     }
 
 
@@ -144,6 +197,14 @@ def _error_response(message: str) -> dict:
     return {
         "recipes": [],
         "chat_reply": message,
+        "error": message,
+    }
+
+
+def _chat_error(message: str) -> dict:
+    return {
+        "reply": message,
+        "suggested_questions": [],
         "error": message,
     }
 

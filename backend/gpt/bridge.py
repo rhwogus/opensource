@@ -41,6 +41,18 @@ def main() -> None:
         print(json.dumps(recommend_recipes(names), ensure_ascii=False))
         return
 
+    if command == "chat":
+        from gpt.service import ask_recipe_question
+
+        raw = sys.argv[2] if len(sys.argv) > 2 else "{}"
+        payload = json.loads(raw)
+        print(json.dumps(ask_recipe_question(
+            payload.get("question", ""),
+            payload.get("ingredients", []),
+            payload.get("recipes", []),
+        ), ensure_ascii=False))
+        return
+
     if command == "ping":
         from gpt.service import is_api_key_configured
 

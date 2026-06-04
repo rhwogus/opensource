@@ -297,6 +297,9 @@ function Fridge() {
 }
 
 function RecipeCard({ recipe, ai }) {
+    const [showSteps, setShowSteps] = useState(false);
+    const steps = recipe.steps || [];
+
     return (
         <article className={`recipe-card ${ai ? "ai-card" : ""}`}>
             <div className="recipe-image" aria-hidden="true"><span></span></div>
@@ -311,19 +314,38 @@ function RecipeCard({ recipe, ai }) {
                         <span key={ingredient}>{ingredient}</span>
                     ))}
                 </div>
+                {(recipe.estimatedTime || recipe.difficulty) && (
+                    <div className="recipe-meta-row">
+                        {recipe.estimatedTime && <span>{recipe.estimatedTime}</span>}
+                        {recipe.difficulty && <span>{recipe.difficulty}</span>}
+                    </div>
+                )}
                 {recipe.missingIngredients?.length > 0 && (
                     <p className="muted-text">Missing: {recipe.missingIngredients.join(", ")}</p>
                 )}
-                {recipe.steps?.length > 0 && (
-                    <ol className="steps-list">
-                        {recipe.steps.slice(0, 3).map((step, index) => (
+                {recipe.tips?.length > 0 && (
+                    <div className="tip-box">
+                        <strong>Tip</strong>
+                        <p>{recipe.tips.slice(0, 2).join(" ")}</p>
+                    </div>
+                )}
+                {showSteps && steps.length > 0 && (
+                    <ol className="steps-list expanded">
+                        {steps.map((step, index) => (
                             <li key={`${step}-${index}`}>{step}</li>
                         ))}
                     </ol>
                 )}
                 <div className="recipe-footer">
                     <span>{recipe.calories || 0} kcal</span>
-                    <button className="secondary-action" type="button">Cook Now</button>
+                    <button
+                        className="secondary-action"
+                        type="button"
+                        onClick={() => setShowSteps(!showSteps)}
+                        disabled={steps.length === 0}
+                    >
+                        {showSteps ? "Close" : "Cook Now"}
+                    </button>
                 </div>
             </div>
         </article>
@@ -334,7 +356,11 @@ function Recipes() {
     const [recipes, setRecipes] = useState([]);
     const [aiRecipes, setAiRecipes] = useState([]);
     const [aiMessage, setAiMessage] = useState("");
+    const [suggestedQuestions, setSuggestedQuestions] = useState([]);
+    const [chatMessages, setChatMessages] = useState([]);
+    const [chatInput, setChatInput] = useState("");
     const [loadingAi, setLoadingAi] = useState(false);
+    const [chatLoading, setChatLoading] = useState(false);
     const [error, setError] = useState("");
 
     useEffect(() => {
@@ -350,6 +376,8 @@ function Recipes() {
             const data = await api("/api/recommend", { method: "POST", body: "{}" });
             setAiRecipes(data.recipes || []);
             setAiMessage(data.chat_reply || "");
+            setSuggestedQuestions(data.suggested_questions || []);
+            setChatMessages(data.chat_reply ? [{ role: "assistant", text: data.chat_reply }] : []);
             if (data.error) {
                 setError(data.error);
             }
@@ -357,6 +385,33 @@ function Recipes() {
             setError(error.message);
         } finally {
             setLoadingAi(false);
+        }
+    }
+
+
+    async function handleAskAi(questionText = chatInput) {
+        const question = questionText.trim();
+        if (!question || chatLoading) return;
+
+        setError("");
+        setChatInput("");
+        setChatMessages(messages => [...messages, { role: "user", text: question }]);
+        setChatLoading(true);
+
+        try {
+            const data = await api("/api/chat", {
+                method: "POST",
+                body: JSON.stringify({ question, recipes: aiRecipes })
+            });
+            setChatMessages(messages => [...messages, { role: "assistant", text: data.reply || "답변을 만들지 못했어요." }]);
+            setSuggestedQuestions(data.suggested_questions || []);
+            if (data.error) {
+                setError(data.error);
+            }
+        } catch (error) {
+            setError(error.message);
+        } finally {
+            setChatLoading(false);
         }
     }
 
@@ -384,6 +439,42 @@ function Recipes() {
                     </div>
                     <div className="recipe-grid">
                         {aiRecipes.map(recipe => <RecipeCard recipe={recipe} ai key={recipe.id} />)}
+                    </div>
+                    <div className="ai-chat-panel">
+                        <div className="ai-chat-header">
+                            <div>
+                                <h3>Ask AI about these recipes</h3>
+                                <p>재료 대체, 조리 순서, 칼로리 조절처럼 궁금한 걸 이어서 물어볼 수 있어요.</p>
+                            </div>
+                        </div>
+                        <div className="chat-thread">
+                            {chatMessages.map((message, index) => (
+                                <div className={`chat-bubble ${message.role}`} key={`${message.role}-${index}`}>
+                                    {message.text}
+                                </div>
+                            ))}
+                            {chatLoading && <div className="chat-bubble assistant">답변을 준비하고 있어요...</div>}
+                        </div>
+                        {suggestedQuestions.length > 0 && (
+                            <div className="question-chips">
+                                {suggestedQuestions.map(question => (
+                                    <button type="button" key={question} onClick={() => handleAskAi(question)}>
+                                        {question}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                        <form className="chat-form" onSubmit={event => { event.preventDefault(); handleAskAi(); }}>
+                            <input
+                                type="text"
+                                value={chatInput}
+                                onChange={event => setChatInput(event.target.value)}
+                                placeholder="예: 버터 없이 만들 수 있어?"
+                            />
+                            <button className="primary-action" type="submit" disabled={chatLoading || !chatInput.trim()}>
+                                Ask
+                            </button>
+                        </form>
                     </div>
                 </section>
             )}
