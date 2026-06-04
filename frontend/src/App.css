@@ -925,3 +925,129 @@ input:focus {
         grid-template-columns: 1fr;
     }
 }
+
+/* ---------------- FRESH GLASS UI OVERRIDES ---------------- */
+body {
+    background:
+        radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.11), transparent 42%),
+        linear-gradient(180deg, #f0fdf4 0%, #f6fff8 46%, #ffffff 100%);
+}
+
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+        radial-gradient(circle at 12% 18%, rgba(34, 197, 94, 0.16), transparent 28%),
+        radial-gradient(circle at 88% 16%, rgba(16, 185, 129, 0.14), transparent 26%),
+        radial-gradient(circle at 70% 88%, rgba(187, 247, 208, 0.32), transparent 30%);
+}
+
+.site-nav,
+.navbar {
+    background:
+        linear-gradient(180deg, rgba(240, 253, 244, 0.72), rgba(240, 253, 244, 0.42));
+    border-bottom: 1px solid rgba(255, 255, 255, 0.42);
+    box-shadow: 0 18px 48px rgba(6, 78, 59, 0.04);
+    backdrop-filter: blur(22px) saturate(1.18);
+    -webkit-backdrop-filter: blur(22px) saturate(1.18);
+}
+
+.site-nav::after,
+.navbar::after {
+    height: 24px;
+    bottom: -24px;
+    background: linear-gradient(180deg, rgba(240, 253, 244, 0.38), transparent);
+}
+
+.nav-links button {
+    background: rgba(255, 255, 255, 0.28);
+    border: 1px solid rgba(255, 255, 255, 0.54);
+    box-shadow: none;
+}
+
+.nav-links button:hover {
+    background: rgba(255, 255, 255, 0.66);
+    color: var(--green-dark, var(--darkgreen));
+}
+
+.nav-active {
+    background: rgba(220, 252, 231, 0.74) !important;
+    border-color: rgba(34, 197, 94, 0.28) !important;
+    box-shadow: 0 10px 24px rgba(34, 197, 94, 0.12) !important;
+}
+
+.hero-section,
+.page-header,
+.panel,
+.metric-card,
+.recipe-card,
+.feature-card,
+.hero-logo,
+.freshness-console,
+.search-box,
+.add-button,
+.inline-form,
+.list-item,
+.image-box,
+.graph,
+.calorie-box {
+    background: rgba(255, 255, 255, 0.56);
+    border: 1px solid rgba(255, 255, 255, 0.68);
+    box-shadow:
+        0 18px 48px rgba(6, 78, 59, 0.09),
+        inset 0 1px 0 rgba(255, 255, 255, 0.56);
+    backdrop-filter: blur(18px) saturate(1.16);
+    -webkit-backdrop-filter: blur(18px) saturate(1.16);
+}
+
+.hero {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+.hero > *:not(.vegetable-container) {
+    position: relative;
+    z-index: 1;
+}
+
+.feature-card {
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.66), rgba(255, 255, 255, 0.42));
+}
+
+.feature-icon {
+    background: rgba(220, 252, 231, 0.68);
+    border: 1px solid rgba(255, 255, 255, 0.72);
+}
+
+input {
+    background: rgba(255, 255, 255, 0.52);
+    border-color: rgba(255, 255, 255, 0.72);
+}
+
+input:focus {
+    background: rgba(255, 255, 255, 0.86);
+}
+
+.list-item {
+    background: rgba(255, 255, 255, 0.48);
+}
+
+.recipe-image {
+    background:
+        linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(34, 197, 94, 0.04)),
+        rgba(255, 255, 255, 0.34);
+}
+
+.status-pill,
+.tag-list span,
+.ai-badge {
+    background: rgba(220, 252, 231, 0.68);
+    border: 1px solid rgba(255, 255, 255, 0.62);
+}

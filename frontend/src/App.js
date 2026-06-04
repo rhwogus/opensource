@@ -99,20 +99,19 @@ function Nav({ page, navigate }) {
 function Home({ navigate }) {
     return (
         <main className="landing-modern">
+            <div className="vegetable-container" aria-hidden="true">
+                <span className="veg veg1">{"\u{1F955}"}</span>
+                <span className="veg veg2">{"\u{1F966}"}</span>
+                <span className="veg veg3">{"\u{1F345}"}</span>
+                <span className="veg veg4">{"\u{1F96C}"}</span>
+                <span className="veg veg5">{"\u{1F9C4}"}</span>
+                <span className="veg veg6">{"\u{1F33D}"}</span>
+            </div>
+
             <section className="hero">
                 <div className="hero-logo">
                     <img src="/logo.png" alt="ReciFridge" />
                 </div>
-
-                <div className="vegetable-container" aria-hidden="true">
-                    <span className="veg veg1">{"\u{1F955}"}</span>
-                    <span className="veg veg2">{"\u{1F966}"}</span>
-                    <span className="veg veg3">{"\u{1F345}"}</span>
-                    <span className="veg veg4">{"\u{1F96C}"}</span>
-                    <span className="veg veg5">{"\u{1F9C4}"}</span>
-                    <span className="veg veg6">{"\u{1F33D}"}</span>
-                </div>
-
                 <h1>ReciFridge</h1>
                 <p className="hero-subtitle">
                     Create healthy meals with ingredients from your fridge
