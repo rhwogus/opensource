@@ -653,6 +653,122 @@ input:focus {
     line-height: 1.5;
 }
 
+
+.recipe-meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.recipe-meta-row span {
+    border: 1px solid rgba(47, 125, 85, 0.22);
+    border-radius: 999px;
+    padding: 6px 10px;
+    color: var(--green-dark);
+    background: #f4fbf5;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.tip-box {
+    display: grid;
+    gap: 4px;
+    border-left: 3px solid var(--green);
+    padding: 10px 12px;
+    background: #f7fbf6;
+}
+
+.tip-box strong {
+    color: var(--green-dark);
+    font-size: 13px;
+}
+
+.ai-chat-panel {
+    display: grid;
+    gap: 14px;
+    margin-top: 18px;
+    border: 1px solid rgba(44, 99, 143, 0.28);
+    border-radius: 8px;
+    padding: 18px;
+    background: #fbfdfb;
+}
+
+.ai-chat-header h3 {
+    margin: 0 0 6px;
+    color: var(--green-dark);
+}
+
+.ai-chat-header p {
+    margin: 0;
+    color: var(--muted);
+}
+
+.chat-thread {
+    display: grid;
+    gap: 10px;
+    max-height: 280px;
+    overflow: auto;
+    padding: 2px;
+}
+
+.chat-bubble {
+    width: fit-content;
+    max-width: min(720px, 92%);
+    border-radius: 8px;
+    padding: 10px 12px;
+    line-height: 1.55;
+}
+
+.chat-bubble.assistant {
+    border: 1px solid var(--line);
+    color: var(--ink);
+    background: #ffffff;
+}
+
+.chat-bubble.user {
+    justify-self: end;
+    color: #ffffff;
+    background: var(--green);
+}
+
+.question-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.question-chips button {
+    border: 1px solid rgba(47, 125, 85, 0.22);
+    border-radius: 999px;
+    padding: 8px 11px;
+    color: var(--green-dark);
+    background: #effaf1;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.chat-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+}
+
+.chat-form input {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0 14px;
+    color: var(--ink);
+    background: #ffffff;
+    font: inherit;
+}
+
+@media (max-width: 640px) {
+    .chat-form {
+        grid-template-columns: 1fr;
+    }
+}
+
 .progress-track {
     width: 100%;
     height: 12px;

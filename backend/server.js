@@ -101,6 +101,9 @@ function mapGptRecipes(gptResult) {
         ingredients: recipe.used_ingredients || [],
         missingIngredients: recipe.missing_ingredients || [],
         steps: recipe.steps || [],
+        tips: recipe.tips || [],
+        estimatedTime: recipe.estimated_time || recipe.estimatedTime || "",
+        difficulty: recipe.difficulty || "",
         calories: parseCalories(recipe.nutrition?.calories),
         nutrition: recipe.nutrition || {}
     }));
@@ -342,6 +345,29 @@ async function handleApi(req, res, url) {
         return sendJson(res, 200, {
             recipes: mapGptRecipes(gptResult),
             chat_reply: gptResult.chat_reply || "",
+            suggested_questions: gptResult.suggested_questions || [],
+            error: gptResult.error || null
+        });
+    }
+
+    if (url.pathname === "/api/chat" && req.method === "POST") {
+        const body = JSON.parse(await readBody(req) || "{}");
+        const question = String(body.question || "").trim();
+
+        if (!question) {
+            return sendJson(res, 400, { message: "Question is required." });
+        }
+
+        const ingredients = await getIngredients("");
+        const gptResult = await gptClient.askRecipeQuestion({
+            question,
+            ingredients,
+            recipes: Array.isArray(body.recipes) ? body.recipes : []
+        });
+
+        return sendJson(res, gptResult.error ? 502 : 200, {
+            reply: gptResult.reply || "",
+            suggested_questions: gptResult.suggested_questions || [],
             error: gptResult.error || null
         });
     }

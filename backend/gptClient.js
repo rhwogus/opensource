@@ -85,7 +85,12 @@ function recommendRecipes(ingredientNames) {
     return runGpt("recipes", JSON.stringify(ingredientNames));
 }
 
+function askRecipeQuestion(payload) {
+    return runGpt("chat", JSON.stringify(payload));
+}
+
 module.exports = {
     estimateExpiry,
-    recommendRecipes
+    recommendRecipes,
+    askRecipeQuestion
 };
