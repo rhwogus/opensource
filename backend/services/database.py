@@ -175,7 +175,26 @@ def delete_ingredient_by_id(ingredient_id: int) -> bool:
         cursor = conn.execute("DELETE FROM ingredients WHERE id = ?", (ingredient_id,))
         conn.commit()
         return cursor.rowcount > 0
+    
+def update_ingredient(ingredient_id: int, *, name: str = None, expires_at: str = None) -> bool:
+    fields = []
+    values = []
+    if name is not None:
+        fields.append("name = ?")
+        values.append(name)
+    if expires_at is not None:
+        fields.append("expires_at = ?")
+        values.append(expires_at)
+    if not fields:
+        return False
+    
+    values.append(ingredient_id)
+    query = f"UPDATE ingredients SET {', '.join(fields)} WHERE id = ?"
 
+    with get_connection() as conn:
+        cursor = conn.execute(query, values)
+        conn.commit()
+        return cursor.rowcount > 0
 
 def list_recipes() -> list[dict]:
     with get_connection() as conn:

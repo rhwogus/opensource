@@ -14,6 +14,7 @@ from services.database import (
     list_recipes,
     delete_ingredient_by_id,
     delete_ingredient_by_name,
+    update_ingredient,
 )
 
 from services.gpt import ask_recipe_question, estimate_expiry, recommend_recipes
@@ -94,6 +95,17 @@ def delete_one_ingredient_by_id(ingredient_id):
     deleted = delete_ingredient_by_id(ingredient_id)
     if not deleted:
         return jsonify({"error": f"id {ingredient_id} 재료를 찾을 수 없습니다."}), 404
+    return jsonify({"ingredients": list_ingredients()})
+
+@api_bp.route("/ingredients/id/<int:ingredient_id>", methods=["PATCH"])
+def patch_ingredient(ingredient_id):
+    data = request.get_json(silent=True) or {}
+    name = data.get("name")
+    expires_at = data.get("expiresAt")
+
+    updated = update_ingredient(ingredient_id, name=name, expires_at=expires_at)
+    if not updated:
+        return jsonify({"error": f"id {ingredient_id} 재료를 수정할 수 없습니다"}), 404
     return jsonify({"ingredients": list_ingredients()})
 
 @api_bp.route("/recommend", methods=["POST"])
