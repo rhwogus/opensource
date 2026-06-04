@@ -163,6 +163,19 @@ def clear_ingredients() -> None:
         conn.execute("DELETE FROM ingredients")
         conn.commit()
 
+def delete_ingredient_by_name(name: str) -> bool:
+    with get_connection() as conn:
+        cursor = conn.execute("DELETE FROM ingredients WHERE name = ?", (name,))
+        conn.commit()
+        return cursor.rowcount > 0
+
+
+def delete_ingredient_by_id(ingredient_id: int) -> bool:
+    with get_connection() as conn:
+        cursor = conn.execute("DELETE FROM ingredients WHERE id = ?", (ingredient_id,))
+        conn.commit()
+        return cursor.rowcount > 0
+
 
 def list_recipes() -> list[dict]:
     with get_connection() as conn:

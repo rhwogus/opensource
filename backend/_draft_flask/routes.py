@@ -12,7 +12,10 @@ from services.database import (
     list_ingredients,
     list_meals,
     list_recipes,
+    delete_ingredient_by_id,
+    delete_ingredient_by_name,
 )
+
 from services.gpt import ask_recipe_question, estimate_expiry, recommend_recipes
 
 pages_bp = Blueprint("pages", __name__)
@@ -79,6 +82,19 @@ def delete_ingredients():
     clear_ingredients()
     return jsonify([])
 
+@api_bp.route("/ingredients/<name>", methods=["DELETE"])
+def delete_one_ingredient_by_name(name):
+    deleted = delete_ingredient_by_name(name)
+    if not deleted:
+        return jsonify({"error": f" '{name}' 재료를 찾을 수 없습니다."}), 404
+    return jsonify({"ingredients": list_ingredients()})
+    
+@api_bp.route("/ingredients/id/<int:ingrediend_id>", methods=["DELETE"])
+def delete_one_ingredient_by_id(ingredient_id):
+    deleted = delete_ingredient_by_id(ingredient_id)
+    if not deleted:
+        return jsonify({"error": f"id {ingredient_id} 재료를 찾을 수 없습니다."}), 404
+    return jsonify({"ingredients": list_ingredients()})
 
 @api_bp.route("/recommend", methods=["POST"])
 def recommend():
