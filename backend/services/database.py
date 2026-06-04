@@ -5,7 +5,6 @@ from contextlib import contextmanager
 
 from config import DB_PATH
 
-
 def init_db() -> None:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with get_connection() as conn:
@@ -14,12 +13,12 @@ def init_db() -> None:
             CREATE TABLE IF NOT EXISTS ingredients (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL UNIQUE,
+                expire_days INTEGER,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
             """
         )
         conn.commit()
-
 
 @contextmanager
 def get_connection():
@@ -30,20 +29,18 @@ def get_connection():
     finally:
         conn.close()
 
-
-def add_ingredient(name: str) -> None:
+def add_ingredient(name: str, expire_days: int = None) -> None:
     with get_connection() as conn:
-        conn.execute("INSERT OR IGNORE INTO ingredients (name) VALUES (?)", (name,))
-        conn.commit()
+        conn.execute("INSERT OR IGNORE INTO ingredients (name, expire_days) VALUES (?, ?)", (name, expire_days))
+        conn.commit() 
 
 
-def list_ingredients() -> list[str]:
+def list_ingredients() -> list[dict]:
     with get_connection() as conn:
         rows = conn.execute(
-            "SELECT name FROM ingredients ORDER BY created_at ASC"
+            "SELECT name, expire_days FROM ingredients ORDER BY created_at ASC"
         ).fetchall()
-    return [row["name"] for row in rows]
-
+    return [{"name": row["name"], "expire_days": row["expire_days"]} for row in rows]
 
 def clear_ingredients() -> None:
     with get_connection() as conn:

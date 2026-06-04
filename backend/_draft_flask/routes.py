@@ -23,9 +23,10 @@ def get_ingredients():
 def post_ingredient():
     data = request.get_json(silent=True) or {}
     name = (data.get("name") or "").strip()
+    expire_days = data.get("expire_days")
     if not name:
         return jsonify({"error": "재료 이름을 입력해 주세요."}), 400
-    add_ingredient(name)
+    add_ingredient(name, expire_days)
     return jsonify({"ingredients": list_ingredients()}), 201
 
 
