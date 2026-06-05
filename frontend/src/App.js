@@ -4,6 +4,14 @@ const API_BASES = process.env.REACT_APP_API_URL
     ? [process.env.REACT_APP_API_URL]
     : ["http://localhost:5001", "http://localhost:5000"];
 
+const mealTypes = ["Breakfast", "Lunch", "Dinner"];
+
+const savedRecipeImages = {
+    "Creamy Egg Toast": "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=900&q=80",
+    "Simple Omelette": "https://images.unsplash.com/photo-1510693206972-df098062cb71?auto=format&fit=crop&w=900&q=80",
+    "Milk Pasta": "https://images.unsplash.com/photo-1551183053-bf91a1d81141?auto=format&fit=crop&w=900&q=80"
+};
+
 const navItems = [
     { id: "fridge", label: "Fridge" },
     { id: "recipes", label: "Recipes" },
@@ -238,6 +246,10 @@ function Fridge() {
     const [notice, setNotice] = useState("");
     const [error, setError] = useState("");
     const [saving, setSaving] = useState(false);
+    const [editingId, setEditingId] = useState(null);
+    const [editName, setEditName] = useState("");
+    const [editExpiresAt, setEditExpiresAt] = useState("");
+    const [updatingId, setUpdatingId] = useState(null);
 
     const loadIngredients = useCallback(async (search = query) => {
         const data = await api(`/api/ingredients?q=${encodeURIComponent(search)}`);
@@ -299,6 +311,7 @@ function Fridge() {
     async function handleDeleteIngredient(item) {
         setError("");
         setNotice("");
+        setUpdatingId(item.id);
 
         try {
             await api(`/api/ingredients/id/${item.id}`, { method: "DELETE" });
@@ -306,6 +319,53 @@ function Fridge() {
             await loadIngredients();
         } catch (error) {
             setError(error.message);
+        } finally {
+            setUpdatingId(null);
+        }
+    }
+
+    function startEditingIngredient(item) {
+        setError("");
+        setNotice("");
+        setEditingId(item.id);
+        setEditName(item.name);
+        setEditExpiresAt(item.expiresAt || "");
+    }
+
+    function cancelEditingIngredient() {
+        setEditingId(null);
+        setEditName("");
+        setEditExpiresAt("");
+    }
+
+    async function handleUpdateIngredient(event, item) {
+        event.preventDefault();
+
+        const nextName = editName.trim();
+        if (!nextName) {
+            setError("Ingredient name is required.");
+            return;
+        }
+
+        setError("");
+        setNotice("");
+        setUpdatingId(item.id);
+
+        try {
+            await api(`/api/ingredients/id/${item.id}`, {
+                method: "PATCH",
+                body: JSON.stringify({
+                    name: nextName,
+                    expiresAt: editExpiresAt || ""
+                })
+            });
+            setNotice(`${nextName} updated.`);
+            cancelEditingIngredient();
+            await loadIngredients(query);
+        } catch (error) {
+            setError(error.message);
+        } finally {
+            setUpdatingId(null);
         }
     }
 
@@ -375,25 +435,69 @@ function Fridge() {
 
                     <div className="inventory-list">
                         {ingredients.length > 0 ? ingredients.map(item => (
-                            <article className="list-item ingredient-row" key={item.id}>
-                                <div>
-                                    <strong>{item.name}</strong>
-                                    <span>{item.expiresAt || "No expiration date"}</span>
-                                </div>
-                                <div className="ingredient-actions">
-                                    <span className={`status-pill ${item.daysLeft !== null && item.daysLeft <= 3 ? "urgent" : ""}`}>
-                                        {formatExpiry(item)}
-                                    </span>
-                                    <button
-                                        className="danger-action"
-                                        type="button"
-                                        onClick={() => handleDeleteIngredient(item)}
-                                        aria-label={`Delete ${item.name}`}
-                                    >
-                                        Delete
-                                    </button>
-                                </div>
-                            </article>
+                            editingId === item.id ? (
+                                <form
+                                    className="list-item ingredient-row ingredient-edit-row"
+                                    key={item.id}
+                                    onSubmit={event => handleUpdateIngredient(event, item)}
+                                >
+                                    <div className="ingredient-edit-fields">
+                                        <label>
+                                            Name
+                                            <input
+                                                value={editName}
+                                                onChange={event => setEditName(event.target.value)}
+                                                placeholder="Ingredient name"
+                                                required
+                                            />
+                                        </label>
+                                        <label>
+                                            Expiry date
+                                            <input
+                                                type="date"
+                                                value={editExpiresAt}
+                                                onChange={event => setEditExpiresAt(event.target.value)}
+                                            />
+                                        </label>
+                                    </div>
+                                    <div className="ingredient-actions">
+                                        <button className="primary-action compact-action" type="submit" disabled={updatingId === item.id}>
+                                            {updatingId === item.id ? "Saving..." : "Save"}
+                                        </button>
+                                        <button className="secondary-action compact-action" type="button" onClick={cancelEditingIngredient}>
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </form>
+                            ) : (
+                                <article className="list-item ingredient-row" key={item.id}>
+                                    <div>
+                                        <strong>{item.name}</strong>
+                                        <span>{item.expiresAt || "No expiration date"}</span>
+                                    </div>
+                                    <div className="ingredient-actions">
+                                        <span className={`status-pill ${item.daysLeft !== null && item.daysLeft <= 3 ? "urgent" : ""}`}>
+                                            {formatExpiry(item)}
+                                        </span>
+                                        <button
+                                            className="secondary-action compact-action"
+                                            type="button"
+                                            onClick={() => startEditingIngredient(item)}
+                                        >
+                                            Edit
+                                        </button>
+                                        <button
+                                            className="danger-action"
+                                            type="button"
+                                            onClick={() => handleDeleteIngredient(item)}
+                                            disabled={updatingId === item.id}
+                                            aria-label={`Delete ${item.name}`}
+                                        >
+                                            {updatingId === item.id ? "Deleting..." : "Delete"}
+                                        </button>
+                                    </div>
+                                </article>
+                            )
                         )) : <div className="empty-state">No ingredients found.</div>}
                     </div>
                 </div>
@@ -404,11 +508,22 @@ function Fridge() {
 
 function RecipeCard({ recipe, ai }) {
     const [showSteps, setShowSteps] = useState(false);
+    const [imageBroken, setImageBroken] = useState(false);
     const steps = recipe.steps || [];
+    const imageUrl = recipe.imageUrl || savedRecipeImages[recipe.name];
+    const showImage = imageUrl && !imageBroken;
+    const ingredients = recipe.ingredients || [];
 
     return (
         <article className={`recipe-card ${ai ? "ai-card" : ""}`}>
-            <div className="recipe-image" aria-hidden="true"><span></span></div>
+            <div className={`recipe-image ${showImage ? "has-image" : ""}`} aria-hidden="true">
+                {showImage ? <img src={imageUrl} alt="" onError={() => setImageBroken(true)} /> : <span></span>}
+                <div className="recipe-image-shade"></div>
+                <div className="recipe-image-meta">
+                    {ai ? <span className="ai-badge">AI pick</span> : <span>Kitchen favorite</span>}
+                    <strong>{recipe.calories || 0} kcal</strong>
+                </div>
+            </div>
             <div className="recipe-content">
                 <div className="recipe-title-row">
                     <h3>{recipe.name}</h3>
@@ -416,7 +531,7 @@ function RecipeCard({ recipe, ai }) {
                 </div>
                 {recipe.description && <p>{recipe.description}</p>}
                 <div className="tag-list">
-                    {(recipe.ingredients || []).slice(0, 6).map(ingredient => (
+                    {ingredients.slice(0, 6).map(ingredient => (
                         <span key={ingredient}>{ingredient}</span>
                     ))}
                 </div>
@@ -443,7 +558,7 @@ function RecipeCard({ recipe, ai }) {
                     </ol>
                 )}
                 <div className="recipe-footer">
-                    <span>{recipe.calories || 0} kcal</span>
+                    <span>{ingredients.length} ingredients</span>
                     <button
                         className="secondary-action"
                         type="button"
@@ -586,9 +701,12 @@ function Recipes() {
             )}
 
             <section className="section-block">
-                <div className="section-title">
-                    <h2>Saved Recipes</h2>
-                    <p>Default recipe ideas stored in the backend database.</p>
+                <div className="section-title recipe-library-title">
+                    <div>
+                        <p className="eyebrow">Recipe library</p>
+                        <h2>Saved Recipes</h2>
+                    </div>
+                    <p>Reliable starter ideas with food photography, ingredients, and quick calorie context.</p>
                 </div>
                 <div className="recipe-grid">
                     {recipes.map(recipe => <RecipeCard recipe={recipe} key={recipe.id} />)}
@@ -600,9 +718,12 @@ function Recipes() {
 
 function Meals() {
     const [meals, setMeals] = useState([]);
-    const [type, setType] = useState("");
+    const [type, setType] = useState("Breakfast");
     const [name, setName] = useState("");
     const [calories, setCalories] = useState("");
+    const [autoNutrition, setAutoNutrition] = useState(true);
+    const [notice, setNotice] = useState("");
+    const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
 
     const loadMeals = useCallback(async () => {
@@ -617,18 +738,30 @@ function Meals() {
     async function handleAdd(event) {
         event.preventDefault();
         setError("");
+        setNotice("");
+        setSaving(true);
 
         try {
-            await api("/api/meals", {
+            const created = await api("/api/meals", {
                 method: "POST",
-                body: JSON.stringify({ type, name, calories: Number(calories) })
+                body: JSON.stringify({
+                    type,
+                    name,
+                    calories: calories ? Number(calories) : null,
+                    autoNutrition
+                })
             });
-            setType("");
+            setType("Breakfast");
             setName("");
             setCalories("");
             await loadMeals();
+            if (created.aiMessage) {
+                setNotice(created.aiMessage);
+            }
         } catch (error) {
             setError(error.message);
+        } finally {
+            setSaving(false);
         }
     }
 
@@ -651,17 +784,33 @@ function Meals() {
                         <h2>Add Meal</h2>
                         <p>Simple records keep the dashboard useful.</p>
                     </div>
-                    <input value={type} onChange={event => setType(event.target.value)} placeholder="Breakfast" required />
+                    <div className="meal-type-control" role="group" aria-label="Meal type">
+                        {mealTypes.map(mealType => (
+                            <button
+                                className={type === mealType ? "selected" : ""}
+                                type="button"
+                                key={mealType}
+                                onClick={() => setType(mealType)}
+                            >
+                                {mealType}
+                            </button>
+                        ))}
+                    </div>
                     <input value={name} onChange={event => setName(event.target.value)} placeholder="Food name" required />
                     <input
                         type="number"
                         min="0"
                         value={calories}
                         onChange={event => setCalories(event.target.value)}
-                        placeholder="kcal"
-                        required
+                        placeholder="kcal (optional)"
                     />
-                    <button className="primary-action full-width" type="submit">Add Record</button>
+                    <label className="check-row">
+                        <input type="checkbox" checked={autoNutrition} onChange={event => setAutoNutrition(event.target.checked)} />
+                        <span>Use AI nutrition estimate</span>
+                    </label>
+                    <button className="primary-action full-width" type="submit" disabled={saving}>
+                        {saving ? "Estimating..." : "Add Record"}
+                    </button>
                 </form>
 
                 <div className="panel">
@@ -673,11 +822,15 @@ function Meals() {
                         <span style={{ width: `${progress}%` }}></span>
                     </div>
                     {error && <p className="error-text">{error}</p>}
+                    {notice && <p className="success-text">{notice}</p>}
                     <div className="inventory-list">
                         {meals.map(meal => (
                             <article className="list-item meal-row" key={meal.id}>
                                 <span>{meal.type}</span>
-                                <strong>{meal.name}</strong>
+                                <div>
+                                    <strong>{meal.name}</strong>
+                                    <small>{meal.protein || 0}g protein / {meal.carbs || 0}g carbs / {meal.fat || 0}g fat</small>
+                                </div>
                                 <span>{meal.calories} kcal</span>
                             </article>
                         ))}
@@ -731,6 +884,10 @@ function Dashboard() {
                     <span>Goal Achievement</span>
                     <strong>{data.goalAchievement}%</strong>
                 </div>
+                <div className="metric-card">
+                    <span>Meals Logged</span>
+                    <strong>{data.mealCount || 0}</strong>
+                </div>
             </section>
 
             <section className="workspace-grid dashboard-grid">
@@ -764,7 +921,11 @@ function Dashboard() {
                             <strong>{value}%</strong>
                         </div>
                     ))}
-                    <button className="secondary-action full-width" type="button">Save Goals</button>
+                    <div className="macro-summary">
+                        <span>Protein {data.macroTotals?.protein || 0}g</span>
+                        <span>Carbs {data.macroTotals?.carbs || 0}g</span>
+                        <span>Fat {data.macroTotals?.fat || 0}g</span>
+                    </div>
                 </div>
             </section>
         </main>

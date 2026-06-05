@@ -1,6 +1,10 @@
 """GPT API 호출 및 응답 정규화."""
 
+import base64
+import hashlib
 import json
+import re
+from pathlib import Path
 from datetime import date, timedelta
 from typing import Optional
 
@@ -10,9 +14,11 @@ from gpt.config import OPENAI_API_KEY, OPENAI_MODEL
 from gpt.prompts import (
     CHAT_SYSTEM_PROMPT,
     EXPIRY_SYSTEM_PROMPT,
+    NUTRITION_SYSTEM_PROMPT,
     SYSTEM_PROMPT,
     build_chat_prompt,
     build_expiry_prompt,
+    build_nutrition_prompt,
     build_user_prompt,
 )
 
@@ -46,6 +52,52 @@ def recommend_recipes(ingredients: list) -> dict:
         return _error_response(f"GPT API 호출에 실패했습니다: {exc}")
 
 
+def generate_recipe_image(image_prompt: str, recipe_title: str = "") -> dict:
+    """레시피 이미지 프롬프트로 음식 이미지를 생성하고 static 파일 경로를 반환한다."""
+    prompt = (image_prompt or "").strip()
+    title = (recipe_title or "recipe").strip()
+    if not prompt:
+        return _image_error("이미지 프롬프트가 없습니다.")
+
+    if not is_api_key_configured():
+        return _image_error("OPENAI_API_KEY가 설정되지 않았습니다.")
+
+    static_dir = Path(__file__).resolve().parent.parent / "_draft_flask" / "static" / "generated" / "recipes"
+    static_dir.mkdir(parents=True, exist_ok=True)
+
+    digest = hashlib.sha256(f"{title}|{prompt}".encode("utf-8")).hexdigest()[:16]
+    safe_title = re.sub(r"[^a-zA-Z0-9가-힣_-]+", "-", title).strip("-") or "recipe"
+    filename = f"{safe_title[:32]}-{digest}.png"
+    output_path = static_dir / filename
+    static_path = f"/static/generated/recipes/{filename}"
+
+    if output_path.exists():
+        return {"image_path": static_path, "cached": True}
+
+    final_prompt = (
+        f"{prompt}. Realistic appetizing food photography, natural soft light, "
+        "clean plate or bowl, no text, no logo, no people, no watermark."
+    )
+
+    try:
+        client = OpenAI(api_key=OPENAI_API_KEY)
+        response = client.images.generate(
+            model="gpt-image-1",
+            prompt=final_prompt,
+            size="1024x1024",
+            n=1,
+        )
+        image_base64 = getattr(response.data[0], "b64_json", None)
+        if not image_base64:
+            return _image_error("이미지 생성 응답에 이미지 데이터가 없습니다.")
+        output_path.write_bytes(base64.b64decode(image_base64))
+        return {"image_path": static_path, "cached": False}
+    except OpenAIError as exc:
+        return _image_error(f"이미지 생성 API 호출에 실패했습니다: {exc}")
+    except (OSError, ValueError, IndexError, AttributeError) as exc:
+        return _image_error(f"이미지 파일 저장에 실패했습니다: {exc}")
+
+
 def ask_recipe_question(question: str, ingredients: Optional[list] = None, recipes: Optional[list] = None) -> dict:
     question = (question or "").strip()
     if not question:
@@ -77,6 +129,25 @@ def _extract_ingredient_name(ingredient) -> str:
         return str(ingredient.get("name", "")).strip()
 
     return ""
+
+
+def estimate_meal_nutrition(food_name: str, meal_type: str = "") -> dict:
+    """음식 이름을 받아 일반적인 1인분 기준 칼로리와 탄단지를 추정한다."""
+    name = (food_name or "").strip()
+    meal_type = (meal_type or "").strip()
+    if not name:
+        return _nutrition_error("음식 이름을 입력해 주세요.")
+
+    try:
+        data = _call_gpt_json(
+            NUTRITION_SYSTEM_PROMPT,
+            build_nutrition_prompt(meal_type, name),
+        )
+        return _normalize_nutrition_response(data, name)
+    except json.JSONDecodeError:
+        return _nutrition_error("GPT 응답을 JSON으로 해석하지 못했습니다.")
+    except OpenAIError as exc:
+        return _nutrition_error(f"GPT API 호출에 실패했습니다: {exc}")
 
 
 def estimate_expiry(ingredient_name: str, *, base_date: Optional[date] = None) -> dict:
@@ -161,6 +232,45 @@ def _normalize_chat_response(data: dict) -> dict:
     }
 
 
+def _safe_int(value, default: int = 0, *, minimum: int = 0, maximum: int = 5000) -> int:
+    try:
+        number = int(round(float(value)))
+    except (TypeError, ValueError):
+        return default
+    return max(minimum, min(number, maximum))
+
+
+def _normalize_nutrition_response(data: dict, name: str) -> dict:
+    calories = _safe_int(data.get("calories"), 0, minimum=0, maximum=3000)
+    protein = _safe_int(data.get("protein"), 0, minimum=0, maximum=300)
+    carbs = _safe_int(data.get("carbs"), 0, minimum=0, maximum=500)
+    fat = _safe_int(data.get("fat"), 0, minimum=0, maximum=300)
+
+    serving = data.get("serving", "보통 1인분")
+    if not isinstance(serving, str):
+        serving = "보통 1인분"
+
+    note = data.get("note", "일반적인 1인분 기준 참고용 추정치입니다.")
+    if not isinstance(note, str):
+        note = "일반적인 1인분 기준 참고용 추정치입니다."
+
+    chat_reply = data.get("chat_reply", "")
+    if not isinstance(chat_reply, str) or not chat_reply.strip():
+        chat_reply = f"{name}은(는) 일반적인 1인분 기준 약 {calories}kcal로 추정했어요. (참고용)"
+
+    return {
+        "name": name,
+        "calories": calories,
+        "protein": protein,
+        "carbs": carbs,
+        "fat": fat,
+        "serving": serving,
+        "note": note,
+        "chat_reply": chat_reply,
+        "is_estimate": True,
+    }
+
+
 def _normalize_expiry_response(data: dict, name: str, today: date) -> dict:
     shelf_life_days = data.get("shelf_life_days", 7)
     try:
@@ -206,6 +316,28 @@ def _chat_error(message: str) -> dict:
         "reply": message,
         "suggested_questions": [],
         "error": message,
+    }
+
+
+def _image_error(message: str) -> dict:
+    return {
+        "image_path": "",
+        "error": message,
+    }
+
+
+def _nutrition_error(message: str) -> dict:
+    return {
+        "name": "",
+        "calories": None,
+        "protein": None,
+        "carbs": None,
+        "fat": None,
+        "serving": "",
+        "note": "",
+        "chat_reply": message,
+        "error": message,
+        "is_estimate": False,
     }
 
 

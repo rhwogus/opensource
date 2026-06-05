@@ -21,7 +21,7 @@ from services.database import (
     update_ingredient,
 )
 
-from services.gpt import ask_recipe_question, estimate_expiry, recommend_recipes
+from services.gpt import ask_recipe_question, estimate_expiry, estimate_meal_nutrition, generate_recipe_image, recommend_recipes
 
 pages_bp = Blueprint("pages", __name__)
 api_bp = Blueprint("api", __name__)
@@ -202,9 +202,13 @@ def recommend():
     result = recommend_recipes(ingredients)
     recipes = []
     for index, recipe in enumerate(result.get("recipes") or []):
+        title = recipe.get("title") or "Recipe"
+        image_prompt = recipe.get("image_prompt") or recipe.get("imagePrompt") or ""
+        image_result = generate_recipe_image(image_prompt, title) if image_prompt else {}
+        image_path = image_result.get("image_path") or ""
         recipes.append({
             "id": f"ai-{index}",
-            "name": recipe.get("title") or "Recipe",
+            "name": title,
             "description": recipe.get("description") or "",
             "ingredients": recipe.get("used_ingredients") or [],
             "missingIngredients": recipe.get("missing_ingredients") or [],
@@ -212,6 +216,9 @@ def recommend():
             "tips": recipe.get("tips") or [],
             "estimatedTime": recipe.get("estimated_time") or recipe.get("estimatedTime") or "",
             "difficulty": recipe.get("difficulty") or "",
+            "imagePrompt": image_prompt,
+            "imageUrl": f"{request.host_url.rstrip('/')}{image_path}" if image_path else "",
+            "imageError": image_result.get("error") or "",
             "calories": _parse_calories((recipe.get("nutrition") or {}).get("calories")),
             "nutrition": recipe.get("nutrition") or {},
         })
@@ -253,7 +260,7 @@ def meals():
     user_id, auth_error = _login_required_user_id()
     if auth_error:
         return auth_error
-    return jsonify(list_meals())
+    return jsonify(list_meals(user_id))
 
 
 @api_bp.route("/meals", methods=["POST"])
@@ -264,12 +271,29 @@ def post_meal():
     data = request.get_json(silent=True) or {}
     meal_type = str(data.get("type") or "").strip()
     name = str(data.get("name") or "").strip()
-    calories = int(data.get("calories") or 0)
+    calories = _parse_calories(data.get("calories"))
+    auto_nutrition = data.get("autoNutrition") is not False
 
     if not meal_type or not name:
         return jsonify({"message": "Meal type and name are required."}), 400
 
-    return jsonify(create_meal(meal_type, name, calories)), 201
+    nutrition = None
+    if auto_nutrition:
+        nutrition = estimate_meal_nutrition(name, meal_type)
+        if nutrition.get("error") and calories <= 0:
+            return jsonify({
+                "message": nutrition.get("error"),
+                "aiMessage": nutrition.get("chat_reply") or nutrition.get("error"),
+            }), 502
+        if not nutrition.get("error"):
+            calories = calories or nutrition.get("calories") or 0
+
+    created = create_meal(user_id, meal_type, name, calories, nutrition=nutrition if nutrition and not nutrition.get("error") else None)
+    return jsonify({
+        **created,
+        "isEstimate": bool(nutrition and nutrition.get("is_estimate")),
+        "aiMessage": nutrition.get("chat_reply") if nutrition and not nutrition.get("error") else None,
+    }), 201
 
 
 @api_bp.route("/dashboard", methods=["GET"])
@@ -277,7 +301,7 @@ def dashboard():
     user_id, auth_error = _login_required_user_id()
     if auth_error:
         return auth_error
-    return jsonify(dashboard_data())
+    return jsonify(dashboard_data(user_id))
 
 
 def _parse_calories(value) -> int:
