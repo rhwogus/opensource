@@ -38,6 +38,13 @@ def init_db() -> None:
                 calories INTEGER NOT NULL,
                 eaten_at TEXT DEFAULT CURRENT_TIMESTAMP
             );
+
+            CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            );
             """
         )
         _ensure_ingredient_columns(conn)
@@ -62,6 +69,7 @@ def _ensure_ingredient_columns(conn: sqlite3.Connection) -> None:
         "shelf_life_days": "ALTER TABLE ingredients ADD COLUMN shelf_life_days INTEGER NULL",
         "is_estimate": "ALTER TABLE ingredients ADD COLUMN is_estimate INTEGER DEFAULT 0",
         "note": "ALTER TABLE ingredients ADD COLUMN note TEXT NULL",
+        "user_id": "ALTER TABLE ingredients ADD COLUMN user_id INTEGER",
     }
     for column, statement in migrations.items():
         if column not in columns:
@@ -115,22 +123,23 @@ def _ingredient_view(row: sqlite3.Row) -> dict:
     }
 
 
-def list_ingredients(query: str = "") -> list[dict]:
+def list_ingredients(user_id: int,query: str = "") -> list[dict]:
     search = f"%{query.strip()}%"
     with get_connection() as conn:
         rows = conn.execute(
             """
             SELECT id, name, expires_at, shelf_life_days, is_estimate, note
             FROM ingredients
-            WHERE LOWER(name) LIKE LOWER(?)
+            WHERE user_id = ? and LOWER(name) LIKE LOWER(?)
             ORDER BY expires_at IS NULL, expires_at ASC, id DESC
             """,
-            (search,),
+            (user_id, search,),
         ).fetchall()
     return [_ingredient_view(row) for row in rows]
 
 
 def create_ingredient(
+    user_id: int,
     name: str,
     expires_at: Optional[str],
     *,
@@ -141,10 +150,10 @@ def create_ingredient(
     with get_connection() as conn:
         cursor = conn.execute(
             """
-            INSERT INTO ingredients (name, expires_at, shelf_life_days, is_estimate, note)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO ingredients (user_id, name, expires_at, shelf_life_days, is_estimate, note)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (name, expires_at, shelf_life_days, int(is_estimate), note),
+            (user_id, name, expires_at, shelf_life_days, int(is_estimate), note),
         )
         conn.commit()
         row = conn.execute(
@@ -163,20 +172,20 @@ def clear_ingredients() -> None:
         conn.execute("DELETE FROM ingredients")
         conn.commit()
 
-def delete_ingredient_by_name(name: str) -> bool:
+def delete_ingredient_by_name(user_id: int, name: str) -> bool:
     with get_connection() as conn:
-        cursor = conn.execute("DELETE FROM ingredients WHERE name = ?", (name,))
+        cursor = conn.execute("DELETE FROM ingredients WHERE name = ? AND user_id = ?", (name, user_id),)
         conn.commit()
         return cursor.rowcount > 0
 
 
-def delete_ingredient_by_id(ingredient_id: int) -> bool:
+def delete_ingredient_by_id(user_id: int, ingredient_id: int) -> bool:
     with get_connection() as conn:
-        cursor = conn.execute("DELETE FROM ingredients WHERE id = ?", (ingredient_id,))
+        cursor = conn.execute("DELETE FROM ingredients WHERE id = ? AND user_id = ?", (ingredient_id, user_id),)
         conn.commit()
         return cursor.rowcount > 0
     
-def update_ingredient(ingredient_id: int, *, name: str = None, expires_at: str = None) -> bool:
+def update_ingredient(user_id: int, ingredient_id: int, *, name: str = None, expires_at: str = None) -> bool:
     fields = []
     values = []
     if name is not None:
@@ -189,7 +198,8 @@ def update_ingredient(ingredient_id: int, *, name: str = None, expires_at: str =
         return False
     
     values.append(ingredient_id)
-    query = f"UPDATE ingredients SET {', '.join(fields)} WHERE id = ?"
+    values.append(user_id)
+    query = f"UPDATE ingredients SET {', '.join(fields)} WHERE id = ? AND user_id = ?"
 
     with get_connection() as conn:
         cursor = conn.execute(query, values)
