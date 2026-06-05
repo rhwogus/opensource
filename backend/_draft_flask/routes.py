@@ -16,6 +16,7 @@ from services.database import (
     list_ingredients,
     list_meals,
     list_recipes,
+    save_recipe,
     delete_ingredient_by_id,
     delete_ingredient_by_name,
     update_ingredient,
@@ -252,7 +253,23 @@ def chat():
 
 @api_bp.route("/recipes", methods=["GET"])
 def recipes():
-    return jsonify(list_recipes())
+    user_id, auth_error = _login_required_user_id()
+    if auth_error:
+        return auth_error
+    return jsonify(list_recipes(user_id))
+
+
+@api_bp.route("/recipes", methods=["POST"])
+def post_recipe():
+    user_id, auth_error = _login_required_user_id()
+    if auth_error:
+        return auth_error
+    data = request.get_json(silent=True) or {}
+    try:
+        created = save_recipe(user_id, data)
+    except ValueError as exc:
+        return jsonify({"message": str(exc)}), 400
+    return jsonify(created), 201
 
 
 @api_bp.route("/meals", methods=["GET"])

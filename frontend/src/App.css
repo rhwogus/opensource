@@ -837,6 +837,20 @@ input:focus {
     font-weight: 800;
 }
 
+.recipe-footer-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.recipe-footer-actions .primary-action,
+.recipe-footer-actions .secondary-action {
+    min-height: 38px;
+    padding: 9px 12px;
+    font-size: 13px;
+}
+
 .recipe-title-row h3 {
     margin: 0;
     color: var(--green-dark);
@@ -1244,6 +1258,12 @@ input:focus {
 
     .ingredient-edit-fields {
         grid-template-columns: 1fr;
+        width: 100%;
+    }
+
+    .recipe-footer-actions,
+    .recipe-footer-actions .primary-action,
+    .recipe-footer-actions .secondary-action {
         width: 100%;
     }
 

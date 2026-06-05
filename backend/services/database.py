@@ -8,6 +8,57 @@ from typing import Optional
 
 from config import DB_PATH
 
+DEFAULT_RECIPE_DETAILS = {
+    "Creamy Egg Toast": {
+        "description": "Soft toast layered with creamy egg and a light milk batter for a quick, comforting breakfast.",
+        "steps": [
+            "Whisk the egg, milk, and a pinch of salt in a shallow bowl.",
+            "Dip the bread into the mixture until both sides are lightly coated.",
+            "Heat a pan over medium heat and add a little oil or butter.",
+            "Cook the toast for 2 to 3 minutes per side until golden.",
+            "Serve warm with extra egg or a small salad if you want a fuller meal.",
+        ],
+        "tips": [
+            "Use slightly stale bread so it absorbs the egg mixture without falling apart.",
+            "Cook on medium heat so the inside sets before the outside browns too much.",
+        ],
+        "estimatedTime": "About 15 min",
+        "difficulty": "Easy",
+    },
+    "Simple Omelette": {
+        "description": "A clean, fluffy omelette made with eggs and a small pinch of salt, easy to pair with fridge leftovers.",
+        "steps": [
+            "Crack the eggs into a bowl and beat them with salt until smooth.",
+            "Warm a nonstick pan over medium-low heat.",
+            "Pour in the eggs and gently stir the center as the edges begin to set.",
+            "Fold the omelette when the surface is mostly set but still soft.",
+            "Slide it onto a plate and serve right away.",
+        ],
+        "tips": [
+            "Lower heat gives a softer omelette texture.",
+            "Add leftover vegetables, cheese, or ham before folding if you want more volume.",
+        ],
+        "estimatedTime": "About 10 min",
+        "difficulty": "Easy",
+    },
+    "Milk Pasta": {
+        "description": "A simple creamy pasta using milk and pantry seasoning, useful when you want a warm meal with minimal ingredients.",
+        "steps": [
+            "Boil pasta in salted water until just shy of al dente.",
+            "Warm milk in a pan over low heat and season with salt.",
+            "Add the drained pasta and stir until the sauce lightly thickens.",
+            "Adjust the seasoning and loosen with pasta water if needed.",
+            "Serve while hot, with pepper or cheese if available.",
+        ],
+        "tips": [
+            "Keep the heat low after adding milk so the sauce stays smooth.",
+            "A splash of pasta water helps the milk coat the noodles better.",
+        ],
+        "estimatedTime": "About 20 min",
+        "difficulty": "Easy",
+    },
+}
+
 
 def init_db() -> None:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -285,16 +336,17 @@ def update_ingredient(user_id: int, ingredient_id: int, *, name: str = None, exp
         return cursor.rowcount > 0
 
 def _recipe_view(row: sqlite3.Row, *, saved: bool = False) -> dict:
+    details = DEFAULT_RECIPE_DETAILS.get(row["name"], {}) if not saved else {}
     return {
         "id": f"saved-{row['id']}" if saved else row["id"],
         "name": row["name"],
-        "description": row["description"] if saved else "",
+        "description": row["description"] if saved else details.get("description", ""),
         "ingredients": json.loads(row["ingredients_json"] or "[]"),
         "missingIngredients": json.loads(row["missing_ingredients_json"] or "[]") if saved else [],
-        "steps": json.loads(row["steps_json"] or "[]") if saved else [],
-        "tips": json.loads(row["tips_json"] or "[]") if saved else [],
-        "estimatedTime": row["estimated_time"] if saved else "",
-        "difficulty": row["difficulty"] if saved else "",
+        "steps": json.loads(row["steps_json"] or "[]") if saved else details.get("steps", []),
+        "tips": json.loads(row["tips_json"] or "[]") if saved else details.get("tips", []),
+        "estimatedTime": row["estimated_time"] if saved else details.get("estimatedTime", ""),
+        "difficulty": row["difficulty"] if saved else details.get("difficulty", ""),
         "imageUrl": row["image_url"] if saved else "",
         "calories": int(row["calories"] or 0),
         "nutrition": json.loads(row["nutrition_json"] or "{}") if saved else {},
@@ -339,7 +391,7 @@ def save_recipe(user_id: int, recipe: dict) -> dict:
     calories = int(recipe.get("calories") or 0)
 
     with get_connection() as conn:
-        cursor = conn.execute(
+        conn.execute(
             """
             INSERT INTO saved_recipes (
                 user_id, name, description, ingredients_json, missing_ingredients_json,
@@ -374,21 +426,15 @@ def save_recipe(user_id: int, recipe: dict) -> dict:
             ),
         )
         conn.commit()
-        recipe_id = cursor.lastrowid
-        if recipe_id == 0:
-            recipe_id = conn.execute(
-                "SELECT id FROM saved_recipes WHERE user_id = ? AND name = ?",
-                (user_id, name),
-            ).fetchone()["id"]
         row = conn.execute(
             """
             SELECT id, name, description, ingredients_json, missing_ingredients_json,
                    steps_json, tips_json, estimated_time, difficulty, image_url,
                    calories, nutrition_json
             FROM saved_recipes
-            WHERE id = ? AND user_id = ?
+            WHERE user_id = ? AND name = ?
             """,
-            (recipe_id, user_id),
+            (user_id, name),
         ).fetchone()
     return _recipe_view(row, saved=True)
 

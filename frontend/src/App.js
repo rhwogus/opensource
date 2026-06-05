@@ -506,7 +506,7 @@ function Fridge() {
     );
 }
 
-function RecipeCard({ recipe, ai }) {
+function RecipeCard({ recipe, ai, onSave, saveDisabled, saving }) {
     const [showSteps, setShowSteps] = useState(false);
     const [imageBroken, setImageBroken] = useState(false);
     const steps = recipe.steps || [];
@@ -559,14 +559,26 @@ function RecipeCard({ recipe, ai }) {
                 )}
                 <div className="recipe-footer">
                     <span>{ingredients.length} ingredients</span>
-                    <button
-                        className="secondary-action"
-                        type="button"
-                        onClick={() => setShowSteps(!showSteps)}
-                        disabled={steps.length === 0}
-                    >
-                        {showSteps ? "Close" : "Cook Now"}
-                    </button>
+                    <div className="recipe-footer-actions">
+                        {onSave && (
+                            <button
+                                className={saveDisabled ? "secondary-action" : "primary-action"}
+                                type="button"
+                                onClick={() => onSave(recipe)}
+                                disabled={saveDisabled || saving}
+                            >
+                                {saving ? "Saving..." : saveDisabled ? "Saved" : "Save Recipe"}
+                            </button>
+                        )}
+                        <button
+                            className="secondary-action"
+                            type="button"
+                            onClick={() => setShowSteps(!showSteps)}
+                            disabled={steps.length === 0}
+                        >
+                            {showSteps ? "Close" : "Cook Now"}
+                        </button>
+                    </div>
                 </div>
             </div>
         </article>
@@ -582,11 +594,22 @@ function Recipes() {
     const [chatInput, setChatInput] = useState("");
     const [loadingAi, setLoadingAi] = useState(false);
     const [chatLoading, setChatLoading] = useState(false);
+    const [savingRecipeName, setSavingRecipeName] = useState("");
     const [error, setError] = useState("");
 
-    useEffect(() => {
-        api("/api/recipes").then(setRecipes).catch(error => setError(error.message));
+    const loadRecipes = useCallback(async () => {
+        const data = await api("/api/recipes");
+        setRecipes(data);
     }, []);
+
+    useEffect(() => {
+        loadRecipes().catch(error => setError(error.message));
+    }, [loadRecipes]);
+
+    const savedRecipeNames = useMemo(
+        () => new Set(recipes.filter(recipe => recipe.saved).map(recipe => recipe.name)),
+        [recipes]
+    );
 
     async function handleRecommend() {
         setError("");
@@ -636,6 +659,25 @@ function Recipes() {
         }
     }
 
+    async function handleSaveRecipe(recipe) {
+        setError("");
+        setAiMessage("");
+        setSavingRecipeName(recipe.name);
+
+        try {
+            await api("/api/recipes", {
+                method: "POST",
+                body: JSON.stringify(recipe)
+            });
+            await loadRecipes();
+            setAiMessage(`${recipe.name} saved to Saved Recipes.`);
+        } catch (error) {
+            setError(error.message);
+        } finally {
+            setSavingRecipeName("");
+        }
+    }
+
     return (
         <main className="page-shell">
             <section className="page-header recipes-header">
@@ -659,7 +701,16 @@ function Recipes() {
                         <p>Based on the ingredients currently stored in your fridge.</p>
                     </div>
                     <div className="recipe-grid">
-                        {aiRecipes.map(recipe => <RecipeCard recipe={recipe} ai key={recipe.id} />)}
+                        {aiRecipes.map(recipe => (
+                            <RecipeCard
+                                recipe={recipe}
+                                ai
+                                key={recipe.id}
+                                onSave={handleSaveRecipe}
+                                saveDisabled={savedRecipeNames.has(recipe.name)}
+                                saving={savingRecipeName === recipe.name}
+                            />
+                        ))}
                     </div>
                     <div className="ai-chat-panel">
                         <div className="ai-chat-header">

@@ -149,3 +149,4 @@ __pycache__/
 *.sqlite3
 .DS_Store
 backend/data/
+backend/_draft_flask/static/generated/
