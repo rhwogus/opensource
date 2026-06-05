@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 const API_BASES = process.env.REACT_APP_API_URL
@@ -28,6 +28,8 @@ const pagePaths = {
     meals: "/#/meals",
     dashboard: "/#/dashboard"
 };
+
+const protectedPages = new Set(["fridge", "recipes", "meals", "dashboard"]);
 
 function pageFromLocation() {
     const hashPage = window.location.hash.replace("#/", "");
@@ -70,6 +72,39 @@ function formatExpiry(item) {
     return `${item.daysLeft} days left`;
 }
 
+function SectionReveal({ as: Tag = "section", className = "", delay = 0, children, style, ...props }) {
+    const elementRef = useRef(null);
+    const [visible, setVisible] = useState(false);
+
+    useEffect(() => {
+        const element = elementRef.current;
+        if (!element) return undefined;
+
+        const observer = new IntersectionObserver(
+            entries => {
+                const entry = entries[0];
+                setVisible(Boolean(entry?.isIntersecting));
+            },
+            { threshold: 0.35, rootMargin: "0px 0px -8% 0px" }
+        );
+
+        observer.observe(element);
+
+        return () => observer.disconnect();
+    }, []);
+
+    return (
+        <Tag
+            ref={elementRef}
+            className={`section-reveal ${visible ? "is-visible" : ""} ${className}`.trim()}
+            style={{ "--reveal-delay": `${delay}ms`, ...style }}
+            {...props}
+        >
+            {children}
+        </Tag>
+    );
+}
+
 function Nav({ page, navigate, user, onLogout }) {
     const [open, setOpen] = useState(false);
 
@@ -80,11 +115,11 @@ function Nav({ page, navigate, user, onLogout }) {
                 <span>ReciFridge</span>
             </button>
 
-            <button className="menu-toggle" type="button" onClick={() => setOpen(!open)} aria-label="Open navigation">
-                Menu
+            <button className="menu-toggle" type="button" onClick={() => setOpen(!open)} aria-label="Toggle navigation" aria-expanded={open} aria-controls="site-nav-links">
+                ☰
             </button>
 
-            <ul className={`nav-links ${open ? "active" : ""}`}>
+            <ul id="site-nav-links" className={`nav-links ${open ? "active" : ""}`}>
                 {navItems.map(item => (
                     <li key={item.id}>
                         <button
@@ -99,9 +134,24 @@ function Nav({ page, navigate, user, onLogout }) {
                         </button>
                     </li>
                 ))}
+                <li>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (user) {
+                                onLogout();
+                            } else {
+                                navigate("auth");
+                            }
+                            setOpen(false);
+                        }}
+                    >
+                        {user ? "Logout" : "Login"}
+                    </button>
+                </li>
             </ul>
 
-            <div className="nav-auth">
+            {/* <div className="nav-auth">
                 {user ? (
                     <>
                         <span>{user.username}</span>
@@ -110,15 +160,60 @@ function Nav({ page, navigate, user, onLogout }) {
                 ) : (
                     <button className="secondary-action compact-action" type="button" onClick={() => navigate("auth")}>Login</button>
                 )}
-            </div>
+            </div> */}
 
         </nav>
     );
 }
 
 function Home({ navigate }) {
+    const highlights = [
+        "Track what is inside your fridge.",
+        "Use ingredients before they spoil.",
+        "Get recipe ideas from what you already have."
+    ];
+
+    const featureSteps = [
+        {
+            id: "01",
+            label: "FRIDGE",
+            route: "fridge",
+            title: "Keep every ingredient in one clear list",
+            description:
+                "Add ingredients with purchase dates, expiration dates, and quantity details. Keep the oldest items visible so nothing gets forgotten at the back of the fridge.",
+            action: "Manage My Fridge"
+        },
+        {
+            id: "02",
+            label: "RECIPES",
+            route: "recipes",
+            title: "Turn what you have into meal ideas",
+            description:
+                "ReciFridge checks the ingredients you already own. It recommends recipes that fit your fridge first, not a grocery list.",
+            action: "Get Recipe Recommendations"
+        },
+        {
+            id: "03",
+            label: "MEALS",
+            route: "meals",
+            title: "Log breakfast, lunch, dinner, and snacks",
+            description:
+                "Record daily meals as they happen. Keep a simple history of what you ate through the day.",
+            action: "Log Today\u2019s Meals"
+        },
+        {
+            id: "04",
+            label: "DASHBOARD",
+            route: "dashboard",
+            title: "See the big picture of your eating habits",
+            description:
+                "Review calorie trends, goal progress, and nutrient balance. Make your daily habits easier to understand at a glance.",
+            action: "View My Dashboard"
+        }
+    ];
+
     return (
-        <main className="landing-modern">
+        <main className="landing-home">
             <div className="vegetable-container" aria-hidden="true">
                 <span className="veg veg1">{"\u{1F955}"}</span>
                 <span className="veg veg2">{"\u{1F966}"}</span>
@@ -128,45 +223,69 @@ function Home({ navigate }) {
                 <span className="veg veg6">{"\u{1F33D}"}</span>
             </div>
 
-            <section className="hero">
-                <div className="hero-logo">
-                    <img src="/logo.png" alt="ReciFridge" />
+            <section className="landing-hero">
+                <div className="landing-hero-copy">
+                    <p className="eyebrow">Smart fridge helper</p>
+                    <div className="hero-logo landing-logo">
+                        <img src="/logo.png" alt="ReciFridge" />
+                    </div>
+                    <h1>ReciFridge</h1>
+                    <p className="hero-subtitle">
+                        Keep track of what is in your fridge. Use ingredients before they go bad. Get meal ideas from what you already have.
+                    </p>
+                    <div className="hero-actions">
+                        <button className="hero-btn" type="button" onClick={() => navigate("fridge")}>
+                            Add Ingredients
+                        </button>
+                        <button className="hero-btn hero-btn-secondary" type="button" onClick={() => navigate("recipes")}>
+                            Get Recipe Ideas
+                        </button>
+                    </div>
+                    <div className="hero-highlights" aria-label="Key benefits">
+                        {highlights.map(item => (
+                            <p key={item} className="hero-highlight">{item}</p>
+                        ))}
+                    </div>
                 </div>
-                <h1>ReciFridge</h1>
-                <p className="hero-subtitle">
-                    Create healthy meals with ingredients from your fridge
-                </p>
-                <button className="hero-btn" type="button" onClick={() => navigate("fridge")}>
-                    Get Started
-                </button>
             </section>
 
-            <section className="feature-grid" aria-label="Product features">
-                <div className="feature-card">
-                    <div className="feature-icon">{"\u{1F6D2}"}</div>
-                    <h3>Ingredient Management</h3>
-                    <p>Easily manage ingredients and track expiration dates.</p>
-                </div>
-                <div className="feature-card">
-                    <div className="feature-icon">{"\u{1F37D}\uFE0F"}</div>
-                    <h3>Recipe Recommendation</h3>
-                    <p>Receive recipes based on ingredients available in your fridge.</p>
-                </div>
-                <div className="feature-card">
-                    <div className="feature-icon">{"\u{1F4CA}"}</div>
-                    <h3>Nutrition Dashboard</h3>
-                    <p>Monitor calorie intake and nutrition balance.</p>
-                </div>
-                <div className="feature-card">
-                    <div className="feature-icon">{"\u{1F916}"}</div>
-                    <h3>AI Assistant</h3>
-                    <p>Get cooking guidance and ingredient suggestions instantly.</p>
-                </div>
+            <SectionReveal as="section" className="landing-intro" aria-labelledby="landing-intro-title" delay={80}>
+                <p className="section-label">WHY IT MATTERS</p>
+                <h2 id="landing-intro-title">Stop guessing what to cook or what to use first.</h2>
+                <p>
+                    ReciFridge keeps the fridge view, recipe suggestions, meal logs, and dashboard in one place.
+                    So you can make quicker decisions and waste less food.
+                </p>
+            </SectionReveal>
+
+            <section className="feature-flow" aria-label="ReciFridge features">
+                {featureSteps.map(step => (
+                    <SectionReveal key={step.id} as="article" className="feature-step" delay={step.id === "01" ? 80 : step.id === "02" ? 140 : step.id === "03" ? 200 : 260}>
+                        <div className="feature-step-top">
+                            <div className="feature-number">{step.id}</div>
+                        </div>
+
+                        <div className="feature-text">
+                            <p className="feature-label">{step.label}</p>
+                            <h3>{step.title}</h3>
+                            <p>{step.description}</p>
+                        </div>
+
+                        <button
+                            type="button"
+                            className="feature-btn"
+                            onClick={() => navigate(step.route)}
+                        >
+                            {step.action}
+                        </button>
+                    </SectionReveal>
+                ))}
             </section>
+
         </main>
     );
 }
-function AuthPage({ onAuth }) {
+function AuthPage({ onAuth, modal = false }) {
     const [mode, setMode] = useState("login");
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
@@ -193,12 +312,12 @@ function AuthPage({ onAuth }) {
         }
     }
 
-    return (
-        <main className="page-shell auth-shell">
+    const content = (
+        <>
             <section className="page-header">
                 <div>
                     <p className="eyebrow">Account</p>
-                    <h1>{mode === "login" ? "Login" : "Create Account"}</h1>
+                    <h1 id={modal ? "auth-modal-title" : undefined}>{mode === "login" ? "Login" : "Create Account"}</h1>
                     <p>Sign in to keep your fridge, recipes, and meals separated.</p>
                 </div>
             </section>
@@ -227,13 +346,23 @@ function AuthPage({ onAuth }) {
                     {mode === "login" ? "Create a new account" : "Already have an account"}
                 </button>
             </form>
+        </>
+    );
+
+    if (modal) {
+        return <div className="auth-modal-content">{content}</div>;
+    }
+
+    return (
+        <main className="page-shell auth-shell">
+            {content}
         </main>
     );
 }
 
 function RequireAuth({ user, onAuth, children }) {
     if (!user) {
-        return <AuthPage onAuth={onAuth} />;
+        return null;
     }
     return children;
 }
@@ -1094,8 +1223,26 @@ function App() {
     const [page, setPage] = useState(pageFromLocation);
     const [user, setUser] = useState(null);
     const [authLoading, setAuthLoading] = useState(true);
+    const [authModalOpen, setAuthModalOpen] = useState(false);
+    const [pendingPage, setPendingPage] = useState("");
 
     function navigate(nextPage) {
+        if (nextPage === "auth") {
+            setPendingPage("");
+            setAuthModalOpen(true);
+            setPage("home");
+            window.history.pushState({}, "", pagePaths.home);
+            return;
+        }
+
+        if (protectedPages.has(nextPage) && !user) {
+            setPendingPage(nextPage);
+            setAuthModalOpen(true);
+            setPage("home");
+            window.history.pushState({}, "", pagePaths.home);
+            return;
+        }
+
         setPage(nextPage);
         window.history.pushState({}, "", pagePaths[nextPage]);
     }
@@ -1107,6 +1254,14 @@ function App() {
             .finally(() => setAuthLoading(false));
     }, []);
 
+    useEffect(() => {
+        if (authLoading || user || !protectedPages.has(page)) return;
+        setPendingPage(page);
+        setAuthModalOpen(true);
+        setPage("home");
+        window.history.replaceState({}, "", pagePaths.home);
+    }, [authLoading, page, user]);
+
     async function handleLogout() {
         await api("/api/auth/logout", { method: "POST", body: "{}" });
         setUser(null);
@@ -1115,7 +1270,15 @@ function App() {
 
     useEffect(() => {
         function handlePopState() {
-            setPage(pageFromLocation());
+            const nextPage = pageFromLocation();
+            if (protectedPages.has(nextPage) && !user) {
+                setPendingPage(nextPage);
+                setAuthModalOpen(true);
+                setPage("home");
+                window.history.replaceState({}, "", pagePaths.home);
+                return;
+            }
+            setPage(nextPage);
         }
 
         window.addEventListener("popstate", handlePopState);
@@ -1124,7 +1287,16 @@ function App() {
             window.removeEventListener("popstate", handlePopState);
             window.removeEventListener("hashchange", handlePopState);
         };
-    }, []);
+    }, [user]);
+
+    function handleAuth(user) {
+        const nextPage = pendingPage || "fridge";
+        setUser(user);
+        setAuthModalOpen(false);
+        setPendingPage("");
+        setPage(nextPage);
+        window.history.pushState({}, "", pagePaths[nextPage]);
+    }
 
     if (authLoading) {
         return <main className="page-shell"><section className="page-header"><h1>Loading...</h1></section></main>;
@@ -1134,11 +1306,22 @@ function App() {
         <>
             <Nav page={page} navigate={navigate} user={user} onLogout={handleLogout}></Nav>
             {page === "home" && <Home navigate={navigate}></Home>}
-            {page === "auth" && <AuthPage onAuth={(user) => { setUser(user); navigate("fridge"); }}></AuthPage>}
+            {page === "auth" && <Home navigate={navigate}></Home>}
             {page === "fridge" && <RequireAuth user={user} onAuth={setUser}><Fridge></Fridge></RequireAuth>}
             {page === "recipes" && <RequireAuth user={user} onAuth={setUser}><Recipes></Recipes></RequireAuth>}
             {page === "meals" && <RequireAuth user={user} onAuth={setUser}><Meals></Meals></RequireAuth>}
             {page === "dashboard" && <RequireAuth user={user} onAuth={setUser}><Dashboard></Dashboard></RequireAuth>}
+            <AppModal
+                open={authModalOpen}
+                onClose={() => {
+                    setAuthModalOpen(false);
+                    setPendingPage("");
+                }}
+                titleId="auth-modal-title"
+                className="auth-modal"
+            >
+                <AuthPage onAuth={handleAuth} modal />
+            </AppModal>
         </>
     );
 }
