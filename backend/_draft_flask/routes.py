@@ -2,7 +2,7 @@
 
 from datetime import date
 
-from flask import Blueprint, jsonify, render_template, request
+from flask import Blueprint, jsonify, render_template, request, session
 
 from services.database import (
     clear_ingredients,
@@ -35,12 +35,18 @@ def health():
 
 @api_bp.route("/ingredients", methods=["GET"])
 def get_ingredients():
+    user_id = session.get("user_id")
+    if user_id is None:
+        return jsonify({"message": "로그인이 필요합니다."}), 401
     query = (request.args.get("q") or "").strip()
-    return jsonify(list_ingredients(query))
+    return jsonify(list_ingredients(user_id, query))
 
 
 @api_bp.route("/ingredients", methods=["POST"])
 def post_ingredient():
+    user_id = session.get("user_id")
+    if user_id is None:
+        return jsonify({"message": "로그인이 필요합니다."}), 401
     data = request.get_json(silent=True) or {}
     name = str(data.get("name") or "").strip()
     auto_expiry = data.get("autoExpiry") is not False
@@ -61,6 +67,7 @@ def post_ingredient():
 
     try:
         created = create_ingredient(
+            user_id,
             name,
             expires_at,
             shelf_life_days=expiry_meta.get("shelf_life_days") if expiry_meta else None,
@@ -85,32 +92,47 @@ def delete_ingredients():
 
 @api_bp.route("/ingredients/<name>", methods=["DELETE"])
 def delete_one_ingredient_by_name(name):
-    deleted = delete_ingredient_by_name(name)
+    user_id = session.get("user_id")
+    if user_id is None:
+        return jsonify({"message": "로그인이 필요합니다."}), 401
+    deleted = delete_ingredient_by_name(user_id, name)
     if not deleted:
         return jsonify({"error": f" '{name}' 재료를 찾을 수 없습니다."}), 404
-    return jsonify({"ingredients": list_ingredients()})
+    return jsonify({"ingredients": list_ingredients(user_id)})
     
 @api_bp.route("/ingredients/id/<int:ingrediend_id>", methods=["DELETE"])
 def delete_one_ingredient_by_id(ingredient_id):
-    deleted = delete_ingredient_by_id(ingredient_id)
+    user_id = session.get("user_id")
+    if user_id is None:
+        return jsonify({"message": "로그인이 필요합니다."}), 401
+    deleted = delete_ingredient_by_id(user_id, ingredient_id)
     if not deleted:
         return jsonify({"error": f"id {ingredient_id} 재료를 찾을 수 없습니다."}), 404
-    return jsonify({"ingredients": list_ingredients()})
+    return jsonify({"ingredients": list_ingredients(user_id)})
+
 
 @api_bp.route("/ingredients/id/<int:ingredient_id>", methods=["PATCH"])
 def patch_ingredient(ingredient_id):
+    user_id = session.get("user_id")
+    if user_id is None:
+        return jsonify({"message": "로그인이 필요합니다."}), 401
     data = request.get_json(silent=True) or {}
     name = data.get("name")
     expires_at = data.get("expiresAt")
 
-    updated = update_ingredient(ingredient_id, name=name, expires_at=expires_at)
+    updated = update_ingredient(user_id, ingredient_id, name=name, expires_at=expires_at)
     if not updated:
         return jsonify({"error": f"id {ingredient_id} 재료를 수정할 수 없습니다"}), 404
-    return jsonify({"ingredients": list_ingredients()})
+    return jsonify({"ingredients": list_ingredients(user_id)})
+
 
 @api_bp.route("/recommend", methods=["POST"])
 def recommend():
-    ingredients = list_ingredients("")
+    user_id = session.get("user_id")
+    if user_id is None:
+        return jsonify({"message": "로그인이 필요합니다."}), 401
+    
+    ingredients = list_ingredients(user_id)
     if not ingredients:
         return jsonify({"message": "Add at least one ingredient in Fridge before requesting recommendations."}), 400
 
