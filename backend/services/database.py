@@ -33,9 +33,14 @@ def init_db() -> None:
 
             CREATE TABLE IF NOT EXISTS meals (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NULL,
                 meal_type TEXT NOT NULL,
                 name TEXT NOT NULL,
                 calories INTEGER NOT NULL,
+                protein INTEGER DEFAULT 0,
+                carbs INTEGER DEFAULT 0,
+                fat INTEGER DEFAULT 0,
+                nutrition_json TEXT NULL,
                 eaten_at TEXT DEFAULT CURRENT_TIMESTAMP
             );
 
@@ -48,6 +53,7 @@ def init_db() -> None:
             """
         )
         _ensure_ingredient_columns(conn)
+        _ensure_meal_columns(conn)
         _seed_initial_data(conn)
         conn.commit()
 
@@ -110,6 +116,20 @@ def _ensure_ingredient_columns(conn: sqlite3.Connection) -> None:
         "is_estimate": "ALTER TABLE ingredients ADD COLUMN is_estimate INTEGER DEFAULT 0",
         "note": "ALTER TABLE ingredients ADD COLUMN note TEXT NULL",
         "user_id": "ALTER TABLE ingredients ADD COLUMN user_id INTEGER",
+    }
+    for column, statement in migrations.items():
+        if column not in columns:
+            conn.execute(statement)
+
+
+def _ensure_meal_columns(conn: sqlite3.Connection) -> None:
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(meals)").fetchall()}
+    migrations = {
+        "user_id": "ALTER TABLE meals ADD COLUMN user_id INTEGER",
+        "protein": "ALTER TABLE meals ADD COLUMN protein INTEGER DEFAULT 0",
+        "carbs": "ALTER TABLE meals ADD COLUMN carbs INTEGER DEFAULT 0",
+        "fat": "ALTER TABLE meals ADD COLUMN fat INTEGER DEFAULT 0",
+        "nutrition_json": "ALTER TABLE meals ADD COLUMN nutrition_json TEXT NULL",
     }
     for column, statement in migrations.items():
         if column not in columns:
@@ -262,41 +282,92 @@ def list_recipes() -> list[dict]:
     ]
 
 
-def list_meals() -> list[dict]:
+def _meal_view(row: sqlite3.Row) -> dict:
+    nutrition = {}
+    if row["nutrition_json"]:
+        try:
+            nutrition = json.loads(row["nutrition_json"])
+        except json.JSONDecodeError:
+            nutrition = {}
+
+    return {
+        "id": row["id"],
+        "type": row["type"],
+        "name": row["name"],
+        "calories": int(row["calories"] or 0),
+        "protein": int(row["protein"] or 0),
+        "carbs": int(row["carbs"] or 0),
+        "fat": int(row["fat"] or 0),
+        "eatenAt": row["eaten_at"],
+        "nutrition": nutrition,
+    }
+
+
+def list_meals(user_id: int) -> list[dict]:
     with get_connection() as conn:
         rows = conn.execute(
-            "SELECT id, meal_type AS type, name, calories FROM meals ORDER BY id ASC"
+            """
+            SELECT id, meal_type AS type, name, calories, protein, carbs, fat, nutrition_json, eaten_at
+            FROM meals
+            WHERE user_id = ?
+            ORDER BY eaten_at DESC, id DESC
+            """,
+            (user_id,),
         ).fetchall()
-    return [dict(row) for row in rows]
+    return [_meal_view(row) for row in rows]
 
 
-def create_meal(meal_type: str, name: str, calories: int) -> dict:
+def create_meal(user_id: int, meal_type: str, name: str, calories: int, *, nutrition: Optional[dict] = None) -> dict:
+    nutrition = nutrition or {}
+    protein = int(nutrition.get("protein") or 0)
+    carbs = int(nutrition.get("carbs") or 0)
+    fat = int(nutrition.get("fat") or 0)
+    nutrition_json = json.dumps(nutrition, ensure_ascii=False) if nutrition else None
+
     with get_connection() as conn:
         cursor = conn.execute(
-            "INSERT INTO meals (meal_type, name, calories) VALUES (?, ?, ?)",
-            (meal_type, name, calories),
+            """
+            INSERT INTO meals (user_id, meal_type, name, calories, protein, carbs, fat, nutrition_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (user_id, meal_type, name, calories, protein, carbs, fat, nutrition_json),
         )
         conn.commit()
         row = conn.execute(
-            "SELECT id, meal_type AS type, name, calories FROM meals WHERE id = ?",
-            (cursor.lastrowid,),
+            """
+            SELECT id, meal_type AS type, name, calories, protein, carbs, fat, nutrition_json, eaten_at
+            FROM meals
+            WHERE id = ? AND user_id = ?
+            """,
+            (cursor.lastrowid, user_id),
         ).fetchone()
-    return dict(row)
+    return _meal_view(row)
 
 
-def dashboard_data() -> dict:
+def dashboard_data(user_id: int) -> dict:
     with get_connection() as conn:
         summary = conn.execute(
-            "SELECT COALESCE(SUM(calories), 0) AS totalCalories, COUNT(*) AS mealCount FROM meals"
+            """
+            SELECT
+                COALESCE(SUM(calories), 0) AS totalCalories,
+                COALESCE(SUM(protein), 0) AS protein,
+                COALESCE(SUM(carbs), 0) AS carbs,
+                COALESCE(SUM(fat), 0) AS fat,
+                COUNT(*) AS mealCount
+            FROM meals
+            WHERE user_id = ? AND date(eaten_at) >= date('now', '-6 days')
+            """,
+            (user_id,),
         ).fetchone()
         weekly_rows = conn.execute(
             """
             SELECT date(eaten_at) AS day, SUM(calories) AS calories
             FROM meals
-            WHERE date(eaten_at) >= date('now', '-6 days')
+            WHERE user_id = ? AND date(eaten_at) >= date('now', '-6 days')
             GROUP BY date(eaten_at)
             ORDER BY day ASC
-            """
+            """,
+            (user_id,),
         ).fetchall()
 
     total_calories = int(summary["totalCalories"] or 0)
@@ -311,10 +382,30 @@ def dashboard_data() -> dict:
         day = date.fromordinal(today.toordinal() - days_ago).isoformat()
         weekly.append(calories_by_day.get(day, 0))
 
+    protein = int(summary["protein"] or 0)
+    carbs = int(summary["carbs"] or 0)
+    fat = int(summary["fat"] or 0)
+    macro_calories = {
+        "protein": protein * 4,
+        "carb": carbs * 4,
+        "fat": fat * 9,
+    }
+    macro_total = sum(macro_calories.values())
+    if macro_total:
+        nutrition_balance = {
+            key: round(value / macro_total * 100)
+            for key, value in macro_calories.items()
+        }
+    else:
+        nutrition_balance = {"protein": 0, "carb": 0, "fat": 0}
+
     return {
         "averageCalories": average,
         "dailyGoal": daily_goal,
         "goalAchievement": goal_achievement,
         "weeklyCalories": weekly,
-        "nutritionBalance": {"fat": 25, "carb": 50, "protein": 25},
+        "totalCalories": total_calories,
+        "mealCount": int(summary["mealCount"] or 0),
+        "nutritionBalance": nutrition_balance,
+        "macroTotals": {"protein": protein, "carbs": carbs, "fat": fat},
     }

@@ -4,6 +4,8 @@ const API_BASES = process.env.REACT_APP_API_URL
     ? [process.env.REACT_APP_API_URL]
     : ["http://localhost:5001", "http://localhost:5000"];
 
+const mealTypes = ["Breakfast", "Lunch", "Dinner"];
+
 const navItems = [
     { id: "fridge", label: "Fridge" },
     { id: "recipes", label: "Recipes" },
@@ -408,7 +410,9 @@ function RecipeCard({ recipe, ai }) {
 
     return (
         <article className={`recipe-card ${ai ? "ai-card" : ""}`}>
-            <div className="recipe-image" aria-hidden="true"><span></span></div>
+            <div className={`recipe-image ${recipe.imageUrl ? "has-image" : ""}`} aria-hidden="true">
+                {recipe.imageUrl ? <img src={recipe.imageUrl} alt="" /> : <span></span>}
+            </div>
             <div className="recipe-content">
                 <div className="recipe-title-row">
                     <h3>{recipe.name}</h3>
@@ -600,9 +604,12 @@ function Recipes() {
 
 function Meals() {
     const [meals, setMeals] = useState([]);
-    const [type, setType] = useState("");
+    const [type, setType] = useState("Breakfast");
     const [name, setName] = useState("");
     const [calories, setCalories] = useState("");
+    const [autoNutrition, setAutoNutrition] = useState(true);
+    const [notice, setNotice] = useState("");
+    const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
 
     const loadMeals = useCallback(async () => {
@@ -617,18 +624,30 @@ function Meals() {
     async function handleAdd(event) {
         event.preventDefault();
         setError("");
+        setNotice("");
+        setSaving(true);
 
         try {
-            await api("/api/meals", {
+            const created = await api("/api/meals", {
                 method: "POST",
-                body: JSON.stringify({ type, name, calories: Number(calories) })
+                body: JSON.stringify({
+                    type,
+                    name,
+                    calories: calories ? Number(calories) : null,
+                    autoNutrition
+                })
             });
-            setType("");
+            setType("Breakfast");
             setName("");
             setCalories("");
             await loadMeals();
+            if (created.aiMessage) {
+                setNotice(created.aiMessage);
+            }
         } catch (error) {
             setError(error.message);
+        } finally {
+            setSaving(false);
         }
     }
 
@@ -651,17 +670,33 @@ function Meals() {
                         <h2>Add Meal</h2>
                         <p>Simple records keep the dashboard useful.</p>
                     </div>
-                    <input value={type} onChange={event => setType(event.target.value)} placeholder="Breakfast" required />
+                    <div className="meal-type-control" role="group" aria-label="Meal type">
+                        {mealTypes.map(mealType => (
+                            <button
+                                className={type === mealType ? "selected" : ""}
+                                type="button"
+                                key={mealType}
+                                onClick={() => setType(mealType)}
+                            >
+                                {mealType}
+                            </button>
+                        ))}
+                    </div>
                     <input value={name} onChange={event => setName(event.target.value)} placeholder="Food name" required />
                     <input
                         type="number"
                         min="0"
                         value={calories}
                         onChange={event => setCalories(event.target.value)}
-                        placeholder="kcal"
-                        required
+                        placeholder="kcal (optional)"
                     />
-                    <button className="primary-action full-width" type="submit">Add Record</button>
+                    <label className="check-row">
+                        <input type="checkbox" checked={autoNutrition} onChange={event => setAutoNutrition(event.target.checked)} />
+                        <span>Use AI nutrition estimate</span>
+                    </label>
+                    <button className="primary-action full-width" type="submit" disabled={saving}>
+                        {saving ? "Estimating..." : "Add Record"}
+                    </button>
                 </form>
 
                 <div className="panel">
@@ -673,11 +708,15 @@ function Meals() {
                         <span style={{ width: `${progress}%` }}></span>
                     </div>
                     {error && <p className="error-text">{error}</p>}
+                    {notice && <p className="success-text">{notice}</p>}
                     <div className="inventory-list">
                         {meals.map(meal => (
                             <article className="list-item meal-row" key={meal.id}>
                                 <span>{meal.type}</span>
-                                <strong>{meal.name}</strong>
+                                <div>
+                                    <strong>{meal.name}</strong>
+                                    <small>{meal.protein || 0}g protein / {meal.carbs || 0}g carbs / {meal.fat || 0}g fat</small>
+                                </div>
                                 <span>{meal.calories} kcal</span>
                             </article>
                         ))}
@@ -731,6 +770,10 @@ function Dashboard() {
                     <span>Goal Achievement</span>
                     <strong>{data.goalAchievement}%</strong>
                 </div>
+                <div className="metric-card">
+                    <span>Meals Logged</span>
+                    <strong>{data.mealCount || 0}</strong>
+                </div>
             </section>
 
             <section className="workspace-grid dashboard-grid">
@@ -764,7 +807,11 @@ function Dashboard() {
                             <strong>{value}%</strong>
                         </div>
                     ))}
-                    <button className="secondary-action full-width" type="button">Save Goals</button>
+                    <div className="macro-summary">
+                        <span>Protein {data.macroTotals?.protein || 0}g</span>
+                        <span>Carbs {data.macroTotals?.carbs || 0}g</span>
+                        <span>Fat {data.macroTotals?.fat || 0}g</span>
+                    </div>
                 </div>
             </section>
         </main>

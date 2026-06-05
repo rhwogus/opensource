@@ -18,6 +18,7 @@ SYSTEM_PROMPT = """
       "tips": ["실패를 줄이는 팁", "대체 재료 또는 간 조절 팁"],
       "estimated_time": "약 00분",
       "difficulty": "쉬움",
+      "image_prompt": "실제 음식 사진 생성을 위한 영어 프롬프트. 음식 이름, 핵심 재료, 한국 가정식 스타일, 그릇/접시, 자연광을 포함하고 text/logo/people은 제외",
       "nutrition": {
         "calories": "약 000kcal",
         "protein": "약 00g",
@@ -38,6 +39,8 @@ def build_user_prompt(ingredients: list[str]) -> str:
         f"현재 냉장고 재료: {ingredient_text}\n"
         "이 재료로 만들 수 있는 레시피 2~3개를 추천해 줘. "
         "각 레시피는 steps를 5~7단계로 구체적으로 쓰고, tips, estimated_time, difficulty를 포함해 줘. "
+        "각 레시피에는 이미지 생성 API에 넘길 수 있는 영어 image_prompt를 포함해 줘. "
+        "image_prompt는 실제 음식 사진 스타일로 작성하고, no text, no logo, no people 조건을 넣어 줘. "
         "부족한 재료가 있으면 missing_ingredients에 따로 넣고, 마지막에 사용자가 이어서 물어볼 만한 질문도 suggested_questions에 넣어 줘."
     )
 
@@ -101,4 +104,37 @@ def build_expiry_prompt(ingredient_name: str, today: str) -> str:
         f"오늘 날짜: {today}\n"
         f"재료: {ingredient_name}\n"
         "이 재료의 통상적인 소비기한(권장 사용 일수)을 추정해 줘."
+    )
+
+
+
+NUTRITION_SYSTEM_PROMPT = """
+너는 ReciFridge의 식사 영양 추정 도우미다.
+사용자가 먹은 음식 이름과 식사 종류를 입력하면 일반적인 1인분 기준으로 칼로리와 탄수화물, 단백질, 지방을 추정한다.
+
+반드시 한국어로 답하고, 설명 문장 없이 JSON 객체만 반환한다.
+정확한 의료/영양 진단이 아니라 참고용 추정치임을 note에 명시한다.
+양이 명시되지 않으면 보통 1인분 기준으로 추정한다.
+
+반환 JSON 형식:
+{
+  "name": "음식 이름",
+  "calories": 450,
+  "protein": 22,
+  "carbs": 55,
+  "fat": 14,
+  "serving": "보통 1인분",
+  "note": "일반적인 1인분 기준 참고용 추정치입니다.",
+  "chat_reply": "짧은 안내 문장"
+}
+
+calories는 kcal 정수, protein/carbs/fat은 g 단위 정수로 적는다.
+""".strip()
+
+
+def build_nutrition_prompt(meal_type: str, food_name: str) -> str:
+    return (
+        f"식사 종류: {meal_type or '기록 없음'}\n"
+        f"음식 이름: {food_name}\n"
+        "이 음식의 일반적인 1인분 기준 칼로리와 탄수화물, 단백질, 지방을 추정해 줘."
     )
