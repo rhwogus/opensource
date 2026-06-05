@@ -13,6 +13,7 @@ const navItems = [
 
 const pagePaths = {
     home: "/",
+    auth: "/#/auth",
     fridge: "/#/fridge",
     recipes: "/#/recipes",
     meals: "/#/meals",
@@ -21,7 +22,7 @@ const pagePaths = {
 
 function pageFromLocation() {
     const hashPage = window.location.hash.replace("#/", "");
-    return navItems.some(item => item.id === hashPage) ? hashPage : "home";
+    return pagePaths[hashPage] ? hashPage : "home";
 }
 
 async function api(path, options = {}) {
@@ -31,6 +32,7 @@ async function api(path, options = {}) {
         try {
             const response = await fetch(`${baseUrl}${path}`, {
                 headers: { "Content-Type": "application/json" },
+                credentials: "include",
                 ...options
             });
 
@@ -59,7 +61,7 @@ function formatExpiry(item) {
     return `${item.daysLeft} days left`;
 }
 
-function Nav({ page, navigate }) {
+function Nav({ page, navigate, user, onLogout }) {
     const [open, setOpen] = useState(false);
 
     return (
@@ -90,7 +92,16 @@ function Nav({ page, navigate }) {
                 ))}
             </ul>
 
-
+            <div className="nav-auth">
+                {user ? (
+                    <>
+                        <span>{user.username}</span>
+                        <button className="secondary-action compact-action" type="button" onClick={onLogout}>Logout</button>
+                    </>
+                ) : (
+                    <button className="secondary-action compact-action" type="button" onClick={() => navigate("auth")}>Login</button>
+                )}
+            </div>
 
         </nav>
     );
@@ -146,6 +157,78 @@ function Home({ navigate }) {
         </main>
     );
 }
+function AuthPage({ onAuth }) {
+    const [mode, setMode] = useState("login");
+    const [username, setUsername] = useState("");
+    const [password, setPassword] = useState("");
+    const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
+
+    async function handleSubmit(event) {
+        event.preventDefault();
+        setError("");
+        setLoading(true);
+
+        try {
+            const data = await api(mode === "login" ? "/api/auth/login" : "/api/auth/register", {
+                method: "POST",
+                body: JSON.stringify({ username, password })
+            });
+            setUsername("");
+            setPassword("");
+            onAuth(data.user);
+        } catch (error) {
+            setError(error.message);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    return (
+        <main className="page-shell auth-shell">
+            <section className="page-header">
+                <div>
+                    <p className="eyebrow">Account</p>
+                    <h1>{mode === "login" ? "Login" : "Create Account"}</h1>
+                    <p>Sign in to keep your fridge, recipes, and meals separated.</p>
+                </div>
+            </section>
+
+            <form className="panel auth-panel" onSubmit={handleSubmit}>
+                {error && <p className="error-text">{error}</p>}
+                <label>
+                    Username
+                    <input value={username} onChange={event => setUsername(event.target.value)} placeholder="username" required />
+                </label>
+                <label>
+                    Password
+                    <input type="password" value={password} onChange={event => setPassword(event.target.value)} placeholder="password" required />
+                </label>
+                <button className="primary-action full-width" type="submit" disabled={loading}>
+                    {loading ? "Processing..." : mode === "login" ? "Login" : "Register"}
+                </button>
+                <button
+                    className="secondary-action full-width"
+                    type="button"
+                    onClick={() => {
+                        setError("");
+                        setMode(mode === "login" ? "register" : "login");
+                    }}
+                >
+                    {mode === "login" ? "Create a new account" : "Already have an account"}
+                </button>
+            </form>
+        </main>
+    );
+}
+
+function RequireAuth({ user, onAuth, children }) {
+    if (!user) {
+        return <AuthPage onAuth={onAuth} />;
+    }
+    return children;
+}
+
 function Fridge() {
     const [ingredients, setIngredients] = useState([]);
     const [query, setQuery] = useState("");
@@ -208,6 +291,19 @@ function Fridge() {
         setError("");
         try {
             await loadIngredients(query);
+        } catch (error) {
+            setError(error.message);
+        }
+    }
+
+    async function handleDeleteIngredient(item) {
+        setError("");
+        setNotice("");
+
+        try {
+            await api(`/api/ingredients/id/${item.id}`, { method: "DELETE" });
+            setNotice(`${item.name} removed from your fridge.`);
+            await loadIngredients();
         } catch (error) {
             setError(error.message);
         }
@@ -284,9 +380,19 @@ function Fridge() {
                                     <strong>{item.name}</strong>
                                     <span>{item.expiresAt || "No expiration date"}</span>
                                 </div>
-                                <span className={`status-pill ${item.daysLeft !== null && item.daysLeft <= 3 ? "urgent" : ""}`}>
-                                    {formatExpiry(item)}
-                                </span>
+                                <div className="ingredient-actions">
+                                    <span className={`status-pill ${item.daysLeft !== null && item.daysLeft <= 3 ? "urgent" : ""}`}>
+                                        {formatExpiry(item)}
+                                    </span>
+                                    <button
+                                        className="danger-action"
+                                        type="button"
+                                        onClick={() => handleDeleteIngredient(item)}
+                                        aria-label={`Delete ${item.name}`}
+                                    >
+                                        Delete
+                                    </button>
+                                </div>
                             </article>
                         )) : <div className="empty-state">No ingredients found.</div>}
                     </div>
@@ -667,10 +773,25 @@ function Dashboard() {
 
 function App() {
     const [page, setPage] = useState(pageFromLocation);
+    const [user, setUser] = useState(null);
+    const [authLoading, setAuthLoading] = useState(true);
 
     function navigate(nextPage) {
         setPage(nextPage);
         window.history.pushState({}, "", pagePaths[nextPage]);
+    }
+
+    useEffect(() => {
+        api("/api/auth/me")
+            .then(data => setUser(data.user || null))
+            .catch(() => setUser(null))
+            .finally(() => setAuthLoading(false));
+    }, []);
+
+    async function handleLogout() {
+        await api("/api/auth/logout", { method: "POST", body: "{}" });
+        setUser(null);
+        navigate("home");
     }
 
     useEffect(() => {
@@ -686,14 +807,19 @@ function App() {
         };
     }, []);
 
+    if (authLoading) {
+        return <main className="page-shell"><section className="page-header"><h1>Loading...</h1></section></main>;
+    }
+
     return (
         <>
-            <Nav page={page} navigate={navigate}></Nav>
+            <Nav page={page} navigate={navigate} user={user} onLogout={handleLogout}></Nav>
             {page === "home" && <Home navigate={navigate}></Home>}
-            {page === "fridge" && <Fridge></Fridge>}
-            {page === "recipes" && <Recipes></Recipes>}
-            {page === "meals" && <Meals></Meals>}
-            {page === "dashboard" && <Dashboard></Dashboard>}
+            {page === "auth" && <AuthPage onAuth={(user) => { setUser(user); navigate("fridge"); }}></AuthPage>}
+            {page === "fridge" && <RequireAuth user={user} onAuth={setUser}><Fridge></Fridge></RequireAuth>}
+            {page === "recipes" && <RequireAuth user={user} onAuth={setUser}><Recipes></Recipes></RequireAuth>}
+            {page === "meals" && <RequireAuth user={user} onAuth={setUser}><Meals></Meals></RequireAuth>}
+            {page === "dashboard" && <RequireAuth user={user} onAuth={setUser}><Dashboard></Dashboard></RequireAuth>}
         </>
     );
 }

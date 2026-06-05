@@ -61,6 +61,46 @@ def get_connection():
     finally:
         conn.close()
 
+def _user_view(row: sqlite3.Row) -> dict:
+    return {
+        "id": row["id"],
+        "username": row["username"],
+        "createdAt": row["created_at"],
+    }
+
+
+def create_user(username: str, password_hash: str) -> dict:
+    with get_connection() as conn:
+        cursor = conn.execute(
+            "INSERT INTO users (username, password_hash) VALUES (?, ?)",
+            (username, password_hash),
+        )
+        conn.commit()
+        row = conn.execute(
+            "SELECT id, username, created_at FROM users WHERE id = ?",
+            (cursor.lastrowid,),
+        ).fetchone()
+    return _user_view(row)
+
+
+def get_user_by_username(username: str) -> Optional[dict]:
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT id, username, password_hash, created_at FROM users WHERE username = ?",
+            (username,),
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def get_user_by_id(user_id: int) -> Optional[dict]:
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT id, username, created_at FROM users WHERE id = ?",
+            (user_id,),
+        ).fetchone()
+    return _user_view(row) if row else None
+
+
 
 def _ensure_ingredient_columns(conn: sqlite3.Connection) -> None:
     columns = {row[1] for row in conn.execute("PRAGMA table_info(ingredients)").fetchall()}
@@ -167,9 +207,9 @@ def create_ingredient(
     return _ingredient_view(row)
 
 
-def clear_ingredients() -> None:
+def clear_ingredients(user_id: int) -> None:
     with get_connection() as conn:
-        conn.execute("DELETE FROM ingredients")
+        conn.execute("DELETE FROM ingredients WHERE user_id = ?", (user_id,))
         conn.commit()
 
 def delete_ingredient_by_name(user_id: int, name: str) -> bool:

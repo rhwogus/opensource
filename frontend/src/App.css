@@ -84,6 +84,40 @@ button {
     color: var(--green-dark);
 }
 
+
+.nav-auth {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+    color: var(--green-dark);
+    font-weight: 800;
+}
+
+.compact-action {
+    min-height: 36px;
+    padding: 8px 12px;
+}
+
+.auth-shell {
+    max-width: 760px;
+}
+
+.auth-panel {
+    display: grid;
+    gap: 14px;
+    max-width: 420px;
+    margin: 0 auto;
+    padding: 22px;
+}
+
+.auth-panel label {
+    display: grid;
+    gap: 8px;
+    color: var(--green-dark);
+    font-weight: 800;
+}
+
 .nav-links {
     display: flex;
     align-items: center;
@@ -548,6 +582,29 @@ input:focus {
 .ingredient-row span,
 .meal-row span {
     color: var(--muted);
+}
+
+
+.ingredient-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.danger-action {
+    min-height: 36px;
+    border: 1px solid rgba(176, 43, 43, 0.24);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: #a52a2a;
+    background: #fff7f6;
+    font-weight: 800;
+}
+
+.danger-action:hover {
+    background: #ffeceb;
 }
 
 .status-pill.urgent {

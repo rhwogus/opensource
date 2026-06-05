@@ -3,12 +3,16 @@
 from datetime import date
 
 from flask import Blueprint, jsonify, render_template, request, session
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from services.database import (
     clear_ingredients,
     create_ingredient,
     create_meal,
     dashboard_data,
+    create_user,
+    get_user_by_id,
+    get_user_by_username,
     list_ingredients,
     list_meals,
     list_recipes,
@@ -32,21 +36,77 @@ def index():
 def health():
     return jsonify({"status": "ok", "server": "flask"})
 
+def _current_user_id():
+    return session.get("user_id")
+
+
+def _login_required_user_id():
+    user_id = _current_user_id()
+    if user_id is None:
+        return None, (jsonify({"message": "로그인이 필요합니다."}), 401)
+    return user_id, None
+
+
+@api_bp.route("/auth/register", methods=["POST"])
+def register():
+    data = request.get_json(silent=True) or {}
+    username = str(data.get("username") or "").strip()
+    password = str(data.get("password") or "")
+
+    if not username or not password:
+        return jsonify({"message": "Username and password are required."}), 400
+    if len(password) < 4:
+        return jsonify({"message": "Password must be at least 4 characters."}), 400
+    if get_user_by_username(username):
+        return jsonify({"message": "Username already exists."}), 409
+
+    user = create_user(username, generate_password_hash(password, method="pbkdf2:sha256"))
+    session["user_id"] = user["id"]
+    return jsonify({"user": user}), 201
+
+
+@api_bp.route("/auth/login", methods=["POST"])
+def login():
+    data = request.get_json(silent=True) or {}
+    username = str(data.get("username") or "").strip()
+    password = str(data.get("password") or "")
+    user = get_user_by_username(username)
+
+    if not user or not check_password_hash(user["password_hash"], password):
+        return jsonify({"message": "Invalid username or password."}), 401
+
+    session["user_id"] = user["id"]
+    return jsonify({"user": {"id": user["id"], "username": user["username"], "createdAt": user["created_at"]}})
+
+
+@api_bp.route("/auth/logout", methods=["POST"])
+def logout():
+    session.clear()
+    return jsonify({"ok": True})
+
+
+@api_bp.route("/auth/me", methods=["GET"])
+def me():
+    user_id = _current_user_id()
+    if user_id is None:
+        return jsonify({"user": None})
+    return jsonify({"user": get_user_by_id(user_id)})
+
 
 @api_bp.route("/ingredients", methods=["GET"])
 def get_ingredients():
-    user_id = session.get("user_id")
-    if user_id is None:
-        return jsonify({"message": "로그인이 필요합니다."}), 401
+    user_id, auth_error = _login_required_user_id()
+    if auth_error:
+        return auth_error
     query = (request.args.get("q") or "").strip()
     return jsonify(list_ingredients(user_id, query))
 
 
 @api_bp.route("/ingredients", methods=["POST"])
 def post_ingredient():
-    user_id = session.get("user_id")
-    if user_id is None:
-        return jsonify({"message": "로그인이 필요합니다."}), 401
+    user_id, auth_error = _login_required_user_id()
+    if auth_error:
+        return auth_error
     data = request.get_json(silent=True) or {}
     name = str(data.get("name") or "").strip()
     auto_expiry = data.get("autoExpiry") is not False
@@ -87,24 +147,27 @@ def post_ingredient():
 
 @api_bp.route("/ingredients", methods=["DELETE"])
 def delete_ingredients():
-    clear_ingredients()
+    user_id, auth_error = _login_required_user_id()
+    if auth_error:
+        return auth_error
+    clear_ingredients(user_id)
     return jsonify([])
 
 @api_bp.route("/ingredients/<name>", methods=["DELETE"])
 def delete_one_ingredient_by_name(name):
-    user_id = session.get("user_id")
-    if user_id is None:
-        return jsonify({"message": "로그인이 필요합니다."}), 401
+    user_id, auth_error = _login_required_user_id()
+    if auth_error:
+        return auth_error
     deleted = delete_ingredient_by_name(user_id, name)
     if not deleted:
         return jsonify({"error": f" '{name}' 재료를 찾을 수 없습니다."}), 404
     return jsonify({"ingredients": list_ingredients(user_id)})
     
-@api_bp.route("/ingredients/id/<int:ingrediend_id>", methods=["DELETE"])
+@api_bp.route("/ingredients/id/<int:ingredient_id>", methods=["DELETE"])
 def delete_one_ingredient_by_id(ingredient_id):
-    user_id = session.get("user_id")
-    if user_id is None:
-        return jsonify({"message": "로그인이 필요합니다."}), 401
+    user_id, auth_error = _login_required_user_id()
+    if auth_error:
+        return auth_error
     deleted = delete_ingredient_by_id(user_id, ingredient_id)
     if not deleted:
         return jsonify({"error": f"id {ingredient_id} 재료를 찾을 수 없습니다."}), 404
@@ -113,9 +176,9 @@ def delete_one_ingredient_by_id(ingredient_id):
 
 @api_bp.route("/ingredients/id/<int:ingredient_id>", methods=["PATCH"])
 def patch_ingredient(ingredient_id):
-    user_id = session.get("user_id")
-    if user_id is None:
-        return jsonify({"message": "로그인이 필요합니다."}), 401
+    user_id, auth_error = _login_required_user_id()
+    if auth_error:
+        return auth_error
     data = request.get_json(silent=True) or {}
     name = data.get("name")
     expires_at = data.get("expiresAt")
@@ -128,9 +191,9 @@ def patch_ingredient(ingredient_id):
 
 @api_bp.route("/recommend", methods=["POST"])
 def recommend():
-    user_id = session.get("user_id")
-    if user_id is None:
-        return jsonify({"message": "로그인이 필요합니다."}), 401
+    user_id, auth_error = _login_required_user_id()
+    if auth_error:
+        return auth_error
     
     ingredients = list_ingredients(user_id)
     if not ingredients:
@@ -168,7 +231,11 @@ def chat():
     if not question:
         return jsonify({"message": "Question is required."}), 400
 
-    result = ask_recipe_question(question, list_ingredients(""), data.get("recipes") or [])
+    user_id, auth_error = _login_required_user_id()
+    if auth_error:
+        return auth_error
+
+    result = ask_recipe_question(question, list_ingredients(user_id), data.get("recipes") or [])
     return jsonify({
         "reply": result.get("reply") or "",
         "suggested_questions": result.get("suggested_questions") or [],
@@ -183,11 +250,17 @@ def recipes():
 
 @api_bp.route("/meals", methods=["GET"])
 def meals():
+    user_id, auth_error = _login_required_user_id()
+    if auth_error:
+        return auth_error
     return jsonify(list_meals())
 
 
 @api_bp.route("/meals", methods=["POST"])
 def post_meal():
+    user_id, auth_error = _login_required_user_id()
+    if auth_error:
+        return auth_error
     data = request.get_json(silent=True) or {}
     meal_type = str(data.get("type") or "").strip()
     name = str(data.get("name") or "").strip()
@@ -201,6 +274,9 @@ def post_meal():
 
 @api_bp.route("/dashboard", methods=["GET"])
 def dashboard():
+    user_id, auth_error = _login_required_user_id()
+    if auth_error:
+        return auth_error
     return jsonify(dashboard_data())
 
 
