@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 
 const API_BASES = process.env.REACT_APP_API_URL
     ? [process.env.REACT_APP_API_URL]
@@ -237,6 +238,37 @@ function RequireAuth({ user, onAuth, children }) {
     return children;
 }
 
+function useBodyScrollLock(locked) {
+    useEffect(() => {
+        if (!locked) return undefined;
+
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+
+        return () => {
+            document.body.style.overflow = previousOverflow;
+        };
+    }, [locked]);
+}
+
+function AppModal({ open, onClose, titleId, className = "", as: Tag = "section", onSubmit, children }) {
+    useBodyScrollLock(open);
+
+    if (!open) return null;
+
+    return createPortal(
+        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+            <Tag className={`app-modal ${className}`} onSubmit={onSubmit}>
+                <button className="modal-close" type="button" onClick={onClose} aria-label="Close">
+                    X
+                </button>
+                {children}
+            </Tag>
+        </div>,
+        document.body
+    );
+}
+
 function Fridge() {
     const [ingredients, setIngredients] = useState([]);
     const [query, setQuery] = useState("");
@@ -250,6 +282,7 @@ function Fridge() {
     const [editName, setEditName] = useState("");
     const [editExpiresAt, setEditExpiresAt] = useState("");
     const [updatingId, setUpdatingId] = useState(null);
+    const [showIngredientModal, setShowIngredientModal] = useState(false);
 
     const loadIngredients = useCallback(async (search = query) => {
         const data = await api(`/api/ingredients?q=${encodeURIComponent(search)}`);
@@ -284,6 +317,7 @@ function Fridge() {
 
             setName("");
             setExpiresAt("");
+            setShowIngredientModal(false);
             await loadIngredients();
 
             if (created.aiMessage) {
@@ -377,6 +411,9 @@ function Fridge() {
                     <h1>Refrigerator Management</h1>
                     <p>Keep ingredients visible, searchable, and ready for AI recipe recommendations.</p>
                 </div>
+                <button className="primary-action" type="button" onClick={() => setShowIngredientModal(true)}>
+                    Add Ingredient
+                </button>
                 <div className="header-mark" aria-hidden="true"><span></span><span></span><span></span></div>
             </section>
 
@@ -395,39 +432,19 @@ function Fridge() {
                 </div>
             </section>
 
-            <section className="workspace-grid">
-                <form className="panel form-panel" onSubmit={handleAdd}>
-                    <div className="panel-heading">
-                        <h2>Add Ingredient</h2>
-                        <p>Leave the date empty to let AI estimate it.</p>
-                    </div>
-                    <label>
-                        Ingredient name
-                        <input value={name} onChange={event => setName(event.target.value)} placeholder="Egg, tofu, kimchi..." required />
-                    </label>
-                    <label>
-                        Expiry date
-                        <input type="date" value={expiresAt} onChange={event => setExpiresAt(event.target.value)} />
-                    </label>
-                    <label className="check-row">
-                        <input type="checkbox" checked={autoExpiry} onChange={event => setAutoExpiry(event.target.checked)} />
-                        <span>Use AI expiry estimate when date is blank</span>
-                    </label>
-                    <button className="primary-action full-width" type="submit" disabled={saving}>
-                        {saving ? "Adding..." : "Add Ingredient"}
-                    </button>
-                </form>
-
+            <section className="fridge-overview-grid">
                 <div className="panel inventory-panel">
                     <div className="panel-heading split-heading">
                         <div>
                             <h2>Current Fridge</h2>
                             <p>{ingredients.length} ingredients available</p>
                         </div>
-                        <form className="search-box" onSubmit={handleSearch}>
-                            <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search" />
-                            <button className="secondary-action" type="submit">Search</button>
-                        </form>
+                        <div className="inventory-tools">
+                            <form className="search-box" onSubmit={handleSearch}>
+                                <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search" />
+                                <button className="secondary-action" type="submit">Search</button>
+                            </form>
+                        </div>
                     </div>
 
                     {error && <p className="error-text">{error}</p>}
@@ -502,12 +519,42 @@ function Fridge() {
                     </div>
                 </div>
             </section>
+
+            <AppModal
+                open={showIngredientModal}
+                onClose={() => setShowIngredientModal(false)}
+                titleId="ingredient-modal-title"
+                className="form-modal"
+                as="form"
+                onSubmit={handleAdd}
+            >
+                <div className="modal-content">
+                    <p className="eyebrow">New ingredient</p>
+                    <h2 id="ingredient-modal-title">Add Ingredient</h2>
+                    <p>Leave the date empty to let AI estimate a practical expiry date.</p>
+                    <label>
+                        Ingredient name
+                        <input value={name} onChange={event => setName(event.target.value)} placeholder="Egg, tofu, kimchi..." required />
+                    </label>
+                    <label>
+                        Expiry date
+                        <input type="date" value={expiresAt} onChange={event => setExpiresAt(event.target.value)} />
+                    </label>
+                    <label className="check-row">
+                        <input type="checkbox" checked={autoExpiry} onChange={event => setAutoExpiry(event.target.checked)} />
+                        <span>Use AI expiry estimate when date is blank</span>
+                    </label>
+                    <button className="primary-action full-width" type="submit" disabled={saving}>
+                        {saving ? "Adding..." : "Add Ingredient"}
+                    </button>
+                </div>
+            </AppModal>
         </main>
     );
 }
 
-function RecipeCard({ recipe, ai, onSave, saveDisabled, saving }) {
-    const [showSteps, setShowSteps] = useState(false);
+function RecipeCard({ recipe, ai, compact, onSave, saveDisabled, saving }) {
+    const [showRecipeModal, setShowRecipeModal] = useState(false);
     const [imageBroken, setImageBroken] = useState(false);
     const steps = recipe.steps || [];
     const imageUrl = recipe.imageUrl || savedRecipeImages[recipe.name];
@@ -515,50 +562,56 @@ function RecipeCard({ recipe, ai, onSave, saveDisabled, saving }) {
     const ingredients = recipe.ingredients || [];
 
     return (
-        <article className={`recipe-card ${ai ? "ai-card" : ""}`}>
+        <>
+        <article className={`recipe-card ${ai ? "ai-card" : ""} ${compact ? "compact-recipe-card" : ""}`}>
             <div className={`recipe-image ${showImage ? "has-image" : ""}`} aria-hidden="true">
                 {showImage ? <img src={imageUrl} alt="" onError={() => setImageBroken(true)} /> : <span></span>}
                 <div className="recipe-image-shade"></div>
-                <div className="recipe-image-meta">
-                    {ai ? <span className="ai-badge">AI pick</span> : <span>Kitchen favorite</span>}
-                    <strong>{recipe.calories || 0} kcal</strong>
-                </div>
+                {!compact && (
+                    <div className="recipe-image-meta">
+                        {ai ? <span className="ai-badge">AI pick</span> : <span>Kitchen favorite</span>}
+                        <strong>{recipe.calories || 0} kcal</strong>
+                    </div>
+                )}
             </div>
             <div className="recipe-content">
                 <div className="recipe-title-row">
                     <h3>{recipe.name}</h3>
-                    {ai && <span className="ai-badge">AI</span>}
+                    {ai && !compact && <span className="ai-badge">AI</span>}
                 </div>
-                {recipe.description && <p>{recipe.description}</p>}
-                <div className="tag-list">
-                    {ingredients.slice(0, 6).map(ingredient => (
-                        <span key={ingredient}>{ingredient}</span>
-                    ))}
-                </div>
-                {(recipe.estimatedTime || recipe.difficulty) && (
-                    <div className="recipe-meta-row">
-                        {recipe.estimatedTime && <span>{recipe.estimatedTime}</span>}
-                        {recipe.difficulty && <span>{recipe.difficulty}</span>}
+                {!compact && (
+                    <>
+                        {recipe.description && <p>{recipe.description}</p>}
+                        <div className="tag-list">
+                            {ingredients.slice(0, 6).map(ingredient => (
+                                <span key={ingredient}>{ingredient}</span>
+                            ))}
+                        </div>
+                        {(recipe.estimatedTime || recipe.difficulty) && (
+                            <div className="recipe-meta-row">
+                                {recipe.estimatedTime && <span>{recipe.estimatedTime}</span>}
+                                {recipe.difficulty && <span>{recipe.difficulty}</span>}
+                            </div>
+                        )}
+                        {recipe.missingIngredients?.length > 0 && (
+                            <p className="muted-text">Missing: {recipe.missingIngredients.join(", ")}</p>
+                        )}
+                        {recipe.tips?.length > 0 && (
+                            <div className="tip-box">
+                                <strong>Tip</strong>
+                                <p>{recipe.tips.slice(0, 2).join(" ")}</p>
+                            </div>
+                        )}
+                    </>
+                )}
+                {compact && (
+                    <div className="compact-recipe-meta">
+                        <span>{recipe.estimatedTime || "Quick meal"}</span>
+                        <span>{recipe.calories || 0} kcal</span>
                     </div>
-                )}
-                {recipe.missingIngredients?.length > 0 && (
-                    <p className="muted-text">Missing: {recipe.missingIngredients.join(", ")}</p>
-                )}
-                {recipe.tips?.length > 0 && (
-                    <div className="tip-box">
-                        <strong>Tip</strong>
-                        <p>{recipe.tips.slice(0, 2).join(" ")}</p>
-                    </div>
-                )}
-                {showSteps && steps.length > 0 && (
-                    <ol className="steps-list expanded">
-                        {steps.map((step, index) => (
-                            <li key={`${step}-${index}`}>{step}</li>
-                        ))}
-                    </ol>
                 )}
                 <div className="recipe-footer">
-                    <span>{ingredients.length} ingredients</span>
+                    {!compact && <span>{ingredients.length} ingredients</span>}
                     <div className="recipe-footer-actions">
                         {onSave && (
                             <button
@@ -573,15 +626,47 @@ function RecipeCard({ recipe, ai, onSave, saveDisabled, saving }) {
                         <button
                             className="secondary-action"
                             type="button"
-                            onClick={() => setShowSteps(!showSteps)}
+                            onClick={() => setShowRecipeModal(true)}
                             disabled={steps.length === 0}
                         >
-                            {showSteps ? "Close" : "Cook Now"}
+                            Cook Now
                         </button>
                     </div>
                 </div>
             </div>
         </article>
+        <AppModal
+            open={showRecipeModal}
+            onClose={() => setShowRecipeModal(false)}
+            titleId={`recipe-modal-${recipe.id}`}
+            className="recipe-modal"
+        >
+            <div className={`recipe-modal-image ${showImage ? "has-image" : ""}`}>
+                {showImage ? <img src={imageUrl} alt="" /> : <span></span>}
+            </div>
+            <div className="modal-content recipe-modal-content">
+                <p className="eyebrow">{ai ? "AI cooking guide" : "Saved recipe"}</p>
+                <h3 id={`recipe-modal-${recipe.id}`}>{recipe.name}</h3>
+                {recipe.description && <p>{recipe.description}</p>}
+                <div className="recipe-modal-meta">
+                    <span>{recipe.estimatedTime || "Quick meal"}</span>
+                    <span>{recipe.difficulty || "Easy"}</span>
+                    <span>{recipe.calories || 0} kcal</span>
+                </div>
+                <ol className="steps-list expanded">
+                    {steps.map((step, index) => (
+                        <li key={`${step}-${index}`}>{step}</li>
+                    ))}
+                </ol>
+                {recipe.tips?.length > 0 && (
+                    <div className="tip-box">
+                        <strong>Tip</strong>
+                        <p>{recipe.tips.slice(0, 2).join(" ")}</p>
+                    </div>
+                )}
+            </div>
+        </AppModal>
+        </>
     );
 }
 
@@ -760,7 +845,7 @@ function Recipes() {
                     <p>Reliable starter ideas with food photography, ingredients, and quick calorie context.</p>
                 </div>
                 <div className="recipe-grid">
-                    {recipes.map(recipe => <RecipeCard recipe={recipe} key={recipe.id} />)}
+                    {recipes.map(recipe => <RecipeCard recipe={recipe} compact key={recipe.id} />)}
                 </div>
             </section>
         </main>
@@ -776,6 +861,7 @@ function Meals() {
     const [notice, setNotice] = useState("");
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
+    const [showMealModal, setShowMealModal] = useState(false);
 
     const loadMeals = useCallback(async () => {
         const data = await api("/api/meals");
@@ -805,6 +891,7 @@ function Meals() {
             setType("Breakfast");
             setName("");
             setCalories("");
+            setShowMealModal(false);
             await loadMeals();
             if (created.aiMessage) {
                 setNotice(created.aiMessage);
@@ -827,14 +914,58 @@ function Meals() {
                     <h1>Meal Tracking</h1>
                     <p>Record meals and keep a quick view of daily calories.</p>
                 </div>
+                <button className="primary-action" type="button" onClick={() => setShowMealModal(true)}>
+                    Add Meal
+                </button>
             </section>
 
-            <section className="workspace-grid meal-grid">
-                <form className="panel form-panel" onSubmit={handleAdd}>
+            <section className="meal-overview-grid">
+                <div className="panel meal-calorie-panel">
                     <div className="panel-heading">
-                        <h2>Add Meal</h2>
-                        <p>Simple records keep the dashboard useful.</p>
+                        <h2>Today's Calories</h2>
+                        <p>{total} / 2000 kcal</p>
                     </div>
+                    <div className="progress-track">
+                        <span style={{ width: `${progress}%` }}></span>
+                    </div>
+                    {error && <p className="error-text">{error}</p>}
+                    {notice && <p className="success-text">{notice}</p>}
+                </div>
+
+                <div className="panel meal-list-panel">
+                    <div className="panel-heading split-heading">
+                        <div>
+                            <h2>Meal History</h2>
+                            <p>{meals.length} records saved</p>
+                        </div>
+                    </div>
+                    <div className="inventory-list">
+                        {meals.map(meal => (
+                            <article className="list-item meal-row" key={meal.id}>
+                                <span>{meal.type}</span>
+                                <div>
+                                    <strong>{meal.name}</strong>
+                                    <small>{meal.protein || 0}g protein / {meal.carbs || 0}g carbs / {meal.fat || 0}g fat</small>
+                                </div>
+                                <span>{meal.calories} kcal</span>
+                            </article>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            <AppModal
+                open={showMealModal}
+                onClose={() => setShowMealModal(false)}
+                titleId="meal-modal-title"
+                className="form-modal"
+                as="form"
+                onSubmit={handleAdd}
+            >
+                <div className="modal-content">
+                    <p className="eyebrow">New record</p>
+                    <h2 id="meal-modal-title">Add Meal</h2>
+                    <p>Save a quick meal record and let AI estimate nutrition when calories are blank.</p>
                     <div className="meal-type-control" role="group" aria-label="Meal type">
                         {mealTypes.map(mealType => (
                             <button
@@ -862,32 +993,8 @@ function Meals() {
                     <button className="primary-action full-width" type="submit" disabled={saving}>
                         {saving ? "Estimating..." : "Add Record"}
                     </button>
-                </form>
-
-                <div className="panel">
-                    <div className="panel-heading">
-                        <h2>Today's Calories</h2>
-                        <p>{total} / 2000 kcal</p>
-                    </div>
-                    <div className="progress-track">
-                        <span style={{ width: `${progress}%` }}></span>
-                    </div>
-                    {error && <p className="error-text">{error}</p>}
-                    {notice && <p className="success-text">{notice}</p>}
-                    <div className="inventory-list">
-                        {meals.map(meal => (
-                            <article className="list-item meal-row" key={meal.id}>
-                                <span>{meal.type}</span>
-                                <div>
-                                    <strong>{meal.name}</strong>
-                                    <small>{meal.protein || 0}g protein / {meal.carbs || 0}g carbs / {meal.fat || 0}g fat</small>
-                                </div>
-                                <span>{meal.calories} kcal</span>
-                            </article>
-                        ))}
-                    </div>
                 </div>
-            </section>
+            </AppModal>
         </main>
     );
 }
