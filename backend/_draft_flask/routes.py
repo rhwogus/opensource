@@ -46,6 +46,7 @@ def get_landing_stats():
         return jsonify({
             "ingredientCount": 0,
             "expiringSoonCount": 0,
+            "expiredCount": 0,
             "mealCount": 0,
             "todayCalories": 0,
         })

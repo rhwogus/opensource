@@ -205,6 +205,7 @@ function Home({ navigate, user }) {
     const [landingStats, setLandingStats] = useState({
         ingredientCount: 0,
         expiringSoonCount: 0,
+        expiredCount: 0,
         mealCount: 0,
         todayCalories: 0
     });
@@ -214,12 +215,14 @@ function Home({ navigate, user }) {
             .then(data => setLandingStats({
                 ingredientCount: data.ingredientCount || 0,
                 expiringSoonCount: data.expiringSoonCount || 0,
+                expiredCount: data.expiredCount || 0,
                 mealCount: data.mealCount || 0,
                 todayCalories: data.todayCalories || 0
             }))
             .catch(() => setLandingStats({
                 ingredientCount: 0,
                 expiringSoonCount: 0,
+                expiredCount: 0,
                 mealCount: 0,
                 todayCalories: 0
             }));
@@ -228,6 +231,7 @@ function Home({ navigate, user }) {
     const statCards = [
         { label: "Ingredients Saved", value: landingStats.ingredientCount, suffix: "", note: "items tracked in your fridge" },
         { label: "Expiring Soon", value: landingStats.expiringSoonCount, suffix: "", note: "items within 3 days" },
+        { label: "Expired Items", value: landingStats.expiredCount, suffix: "", note: "items already past date" },
         { label: "Meals Logged", value: landingStats.mealCount, suffix: "", note: "records stored in your meal log" },
         { label: "Today Calories", value: landingStats.todayCalories, suffix: " kcal", note: "from today's meals" }
     ];
@@ -312,7 +316,7 @@ function Home({ navigate, user }) {
             <SectionReveal as="section" className="landing-stats" aria-label="Live ReciFridge statistics" delay={120}>
                 <div className="landing-stats-heading">
                     <p className="section-label">LIVE STATS</p>
-                    <h2>{user ? "Your fridge data, live from SQLite." : "Sign in to see your live fridge stats."}</h2>
+                    <h2>{user ? "Your fridge data at a glance." : "Sign in to see your live fridge stats."}</h2>
                 </div>
                 <div className="landing-stats-grid">
                     {statCards.map(card => (
