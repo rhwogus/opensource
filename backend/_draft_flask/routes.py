@@ -11,6 +11,7 @@ from services.database import (
     create_meal,
     dashboard_data,
     create_user,
+    delete_meal,
     get_user_by_id,
     get_user_by_username,
     landing_stats,
@@ -20,6 +21,7 @@ from services.database import (
     save_recipe,
     delete_ingredient_by_id,
     delete_ingredient_by_name,
+    update_meal,
     update_ingredient,
 )
 
@@ -198,8 +200,9 @@ def patch_ingredient(ingredient_id):
     data = request.get_json(silent=True) or {}
     name = data.get("name")
     expires_at = data.get("expiresAt")
+    icon = data.get("icon")
 
-    updated = update_ingredient(user_id, ingredient_id, name=name, expires_at=expires_at)
+    updated = update_ingredient(user_id, ingredient_id, name=name, expires_at=expires_at, icon=icon)
     if not updated:
         return jsonify({"error": f"id {ingredient_id} 재료를 수정할 수 없습니다"}), 404
     return jsonify({"ingredients": list_ingredients(user_id)})
@@ -326,6 +329,36 @@ def post_meal():
         "isEstimate": bool(nutrition and nutrition.get("is_estimate")),
         "aiMessage": nutrition.get("chat_reply") if nutrition and not nutrition.get("error") else None,
     }), 201
+
+
+@api_bp.route("/meals/<int:meal_id>", methods=["PATCH"])
+def patch_meal(meal_id):
+    user_id, auth_error = _login_required_user_id()
+    if auth_error:
+        return auth_error
+    data = request.get_json(silent=True) or {}
+    meal_type = str(data.get("type") or "").strip()
+    name = str(data.get("name") or "").strip()
+    calories = _parse_calories(data.get("calories"))
+
+    if not meal_type or not name:
+        return jsonify({"message": "Meal type and name are required."}), 400
+
+    updated = update_meal(user_id, meal_id, meal_type=meal_type, name=name, calories=calories)
+    if not updated:
+        return jsonify({"message": f"Meal id {meal_id} was not found."}), 404
+    return jsonify(updated)
+
+
+@api_bp.route("/meals/<int:meal_id>", methods=["DELETE"])
+def delete_one_meal(meal_id):
+    user_id, auth_error = _login_required_user_id()
+    if auth_error:
+        return auth_error
+    deleted = delete_meal(user_id, meal_id)
+    if not deleted:
+        return jsonify({"message": f"Meal id {meal_id} was not found."}), 404
+    return jsonify({"meals": list_meals(user_id)})
 
 
 @api_bp.route("/dashboard", methods=["GET"])

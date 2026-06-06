@@ -185,6 +185,7 @@ def _ensure_ingredient_columns(conn: sqlite3.Connection) -> None:
         "is_estimate": "ALTER TABLE ingredients ADD COLUMN is_estimate INTEGER DEFAULT 0",
         "note": "ALTER TABLE ingredients ADD COLUMN note TEXT NULL",
         "user_id": "ALTER TABLE ingredients ADD COLUMN user_id INTEGER",
+        "icon": "ALTER TABLE ingredients ADD COLUMN icon TEXT NULL",
     }
     for column, statement in migrations.items():
         if column not in columns:
@@ -249,6 +250,7 @@ def _ingredient_view(row: sqlite3.Row) -> dict:
         "shelfLifeDays": row["shelf_life_days"],
         "isEstimate": bool(row["is_estimate"]),
         "note": row["note"],
+        "icon": row["icon"],
     }
 
 
@@ -257,7 +259,7 @@ def list_ingredients(user_id: int,query: str = "") -> list[dict]:
     with get_connection() as conn:
         rows = conn.execute(
             """
-            SELECT id, name, expires_at, shelf_life_days, is_estimate, note
+            SELECT id, name, expires_at, shelf_life_days, is_estimate, note, icon
             FROM ingredients
             WHERE user_id = ? and LOWER(name) LIKE LOWER(?)
             ORDER BY expires_at IS NULL, expires_at ASC, id DESC
@@ -287,7 +289,7 @@ def create_ingredient(
         conn.commit()
         row = conn.execute(
             """
-            SELECT id, name, expires_at, shelf_life_days, is_estimate, note
+            SELECT id, name, expires_at, shelf_life_days, is_estimate, note, icon
             FROM ingredients
             WHERE id = ?
             """,
@@ -314,7 +316,7 @@ def delete_ingredient_by_id(user_id: int, ingredient_id: int) -> bool:
         conn.commit()
         return cursor.rowcount > 0
     
-def update_ingredient(user_id: int, ingredient_id: int, *, name: str = None, expires_at: str = None) -> bool:
+def update_ingredient(user_id: int, ingredient_id: int, *, name: str = None, expires_at: str = None, icon: str = None) -> bool:
     fields = []
     values = []
     if name is not None:
@@ -323,6 +325,9 @@ def update_ingredient(user_id: int, ingredient_id: int, *, name: str = None, exp
     if expires_at is not None:
         fields.append("expires_at = ?")
         values.append(expires_at)
+    if icon is not None:
+        fields.append("icon = ?")
+        values.append(icon)
     if not fields:
         return False
     
@@ -499,6 +504,45 @@ def create_meal(user_id: int, meal_type: str, name: str, calories: int, *, nutri
             (cursor.lastrowid, user_id),
         ).fetchone()
     return _meal_view(row)
+
+
+def update_meal(user_id: int, meal_id: int, *, meal_type: str, name: str, calories: int) -> Optional[dict]:
+    with get_connection() as conn:
+        existing = conn.execute(
+            "SELECT id FROM meals WHERE id = ? AND user_id = ?",
+            (meal_id, user_id),
+        ).fetchone()
+        if not existing:
+            return None
+
+        conn.execute(
+            """
+            UPDATE meals
+            SET meal_type = ?, name = ?, calories = ?
+            WHERE id = ? AND user_id = ?
+            """,
+            (meal_type, name, calories, meal_id, user_id),
+        )
+        conn.commit()
+        row = conn.execute(
+            """
+            SELECT id, meal_type AS type, name, calories, protein, carbs, fat, nutrition_json, eaten_at
+            FROM meals
+            WHERE id = ? AND user_id = ?
+            """,
+            (meal_id, user_id),
+        ).fetchone()
+    return _meal_view(row)
+
+
+def delete_meal(user_id: int, meal_id: int) -> bool:
+    with get_connection() as conn:
+        cursor = conn.execute(
+            "DELETE FROM meals WHERE id = ? AND user_id = ?",
+            (meal_id, user_id),
+        )
+        conn.commit()
+    return cursor.rowcount > 0
 
 
 def dashboard_data(user_id: int) -> dict:

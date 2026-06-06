@@ -6,6 +6,7 @@ const API_BASES = process.env.REACT_APP_API_URL
     : ["http://localhost:5001", "http://localhost:5000"];
 
 const mealTypes = ["Breakfast", "Lunch", "Dinner"];
+const ingredientIconChoices = ["🍚", "🥚", "🥓", "🥬", "🥛", "🧀", "🍎", "🍅", "🥕", "🧅", "🧄", "🐟", "🍗", "🥩", "🥗"];
 
 const savedRecipeImages = {
     "Creamy Egg Toast": "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=900&q=80",
@@ -70,6 +71,59 @@ function formatExpiry(item) {
     if (item.daysLeft < 0) return `Expired ${Math.abs(item.daysLeft)} days ago`;
     if (item.daysLeft === 0) return "Expires today";
     return `${item.daysLeft} days left`;
+}
+
+function EditIcon() {
+    return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 20h9" />
+            <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+        </svg>
+    );
+}
+
+function TrashIcon() {
+    return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 6h18" />
+            <path d="M8 6V4h8v2" />
+            <path d="M19 6l-1 16H6L5 6" />
+            <path d="M10 11v6" />
+            <path d="M14 11v6" />
+        </svg>
+    );
+}
+
+function SearchIcon() {
+    return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" />
+            <path d="m16.5 16.5 4 4" />
+        </svg>
+    );
+}
+
+function ingredientIcon(name = "") {
+    const lowerName = name.toLowerCase();
+    const iconMap = [
+        { keys: ["rice", "밥", "쌀"], icon: "🍚" },
+        { keys: ["egg", "계란", "달걀"], icon: "🥚" },
+        { keys: ["ham", "햄"], icon: "🥓" },
+        { keys: ["kimchi", "김치"], icon: "🥬" },
+        { keys: ["milk", "우유"], icon: "🥛" },
+        { keys: ["cheese", "치즈"], icon: "🧀" },
+        { keys: ["apple", "사과"], icon: "🍎" },
+        { keys: ["tomato", "토마토"], icon: "🍅" },
+        { keys: ["carrot", "당근"], icon: "🥕" },
+        { keys: ["onion", "양파"], icon: "🧅" },
+        { keys: ["garlic", "마늘"], icon: "🧄" },
+        { keys: ["fish", "생선"], icon: "🐟" },
+        { keys: ["chicken", "닭"], icon: "🍗" },
+        { keys: ["beef", "소고기"], icon: "🥩" },
+        { keys: ["pork", "돼지"], icon: "🥩" },
+    ];
+    const match = iconMap.find(item => item.keys.some(key => lowerName.includes(key)));
+    return match ? match.icon : "🥗";
 }
 
 function SectionReveal({ as: Tag = "section", className = "", delay = 0, children, style, ...props }) {
@@ -230,8 +284,8 @@ function Home({ navigate, user }) {
 
     const statCards = [
         { label: "Ingredients Saved", value: landingStats.ingredientCount, suffix: "", note: "items tracked in your fridge" },
-        { label: "Expiring Soon", value: landingStats.expiringSoonCount, suffix: "", note: "items within 3 days" },
-        { label: "Expired Items", value: landingStats.expiredCount, suffix: "", note: "items already past date" },
+        { label: "Expiring Soon", value: landingStats.expiringSoonCount, suffix: "", note: "items within 3 days", tone: "warning" },
+        { label: "Expired Items", value: landingStats.expiredCount, suffix: "", note: "items already past date", tone: "danger" },
         { label: "Meals Logged", value: landingStats.mealCount, suffix: "", note: "records stored in your meal log" },
         { label: "Today Calories", value: landingStats.todayCalories, suffix: " kcal", note: "from today's meals" }
     ];
@@ -320,13 +374,24 @@ function Home({ navigate, user }) {
                 </div>
                 <div className="landing-stats-grid">
                     {statCards.map(card => (
-                        <article className="landing-stat-card" key={card.label}>
+                        <article className={`landing-stat-card ${card.tone ? `landing-stat-card-${card.tone}` : ""}`.trim()} key={card.label}>
                             <span>{card.label}</span>
                             <strong><CountUpNumber value={card.value} suffix={card.suffix} /></strong>
                             <p>{card.note}</p>
                         </article>
                     ))}
                 </div>
+                {!user && (
+                    <div className="landing-stats-action">
+                        <button
+                            type="button"
+                            className="landing-signin-btn"
+                            onClick={() => navigate("auth")}
+                        >
+                            Sign in
+                        </button>
+                    </div>
+                )}
             </SectionReveal>
 
             <SectionReveal as="section" className="landing-intro" aria-labelledby="landing-intro-title" delay={80}>
@@ -460,6 +525,69 @@ function useBodyScrollLock(locked) {
     }, [locked]);
 }
 
+function useSmoothPageScroll() {
+    useEffect(() => {
+        const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        if (reduceMotion) return undefined;
+
+        let targetY = window.scrollY;
+        let frameId = null;
+
+        function canScrollElement(element, deltaY) {
+            if (!element || element === document.body || element === document.documentElement) {
+                return false;
+            }
+            const style = window.getComputedStyle(element);
+            const scrollable = /(auto|scroll)/.test(style.overflowY) && element.scrollHeight > element.clientHeight;
+            if (!scrollable) return false;
+            if (deltaY > 0) return element.scrollTop + element.clientHeight < element.scrollHeight;
+            return element.scrollTop > 0;
+        }
+
+        function findScrollableParent(element, deltaY) {
+            let current = element;
+            while (current && current !== document.body) {
+                if (canScrollElement(current, deltaY)) return current;
+                current = current.parentElement;
+            }
+            return null;
+        }
+
+        function animate() {
+            const currentY = window.scrollY;
+            const distance = targetY - currentY;
+            if (Math.abs(distance) < 0.5) {
+                window.scrollTo(0, targetY);
+                frameId = null;
+                return;
+            }
+            window.scrollTo(0, currentY + distance * 0.18);
+            frameId = requestAnimationFrame(animate);
+        }
+
+        function handleWheel(event) {
+            if (event.ctrlKey || event.metaKey || event.shiftKey) return;
+            if (event.target instanceof Element && event.target.closest("input, textarea, select, [contenteditable='true']")) return;
+            if (event.target instanceof Element && findScrollableParent(event.target, event.deltaY)) return;
+
+            const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+            if (maxScroll <= 0) return;
+
+            event.preventDefault();
+            targetY = Math.max(0, Math.min(maxScroll, targetY + event.deltaY * 0.82));
+            if (frameId === null) {
+                frameId = requestAnimationFrame(animate);
+            }
+        }
+
+        window.addEventListener("wheel", handleWheel, { passive: false });
+        return () => {
+            window.removeEventListener("wheel", handleWheel);
+            if (frameId !== null) cancelAnimationFrame(frameId);
+        };
+    }, []);
+}
+
 function AppModal({ open, onClose, titleId, className = "", as: Tag = "section", onSubmit, children }) {
     useBodyScrollLock(open);
 
@@ -490,8 +618,14 @@ function Fridge() {
     const [editingId, setEditingId] = useState(null);
     const [editName, setEditName] = useState("");
     const [editExpiresAt, setEditExpiresAt] = useState("");
+    const [editIcon, setEditIcon] = useState("");
+    const [showIconPicker, setShowIconPicker] = useState(false);
     const [updatingId, setUpdatingId] = useState(null);
     const [showIngredientModal, setShowIngredientModal] = useState(false);
+    const [ingredientActionMode, setIngredientActionMode] = useState("");
+    const [highlightedIngredientId, setHighlightedIngredientId] = useState(null);
+    const [flyingIngredientId, setFlyingIngredientId] = useState(null);
+    const [ingredientToastLeaving, setIngredientToastLeaving] = useState(false);
 
     const loadIngredients = useCallback(async (search = query) => {
         const data = await api(`/api/ingredients?q=${encodeURIComponent(search)}`);
@@ -501,6 +635,23 @@ function Fridge() {
     useEffect(() => {
         loadIngredients("").catch(error => setError(error.message));
     }, [loadIngredients]);
+
+    useEffect(() => {
+        if (!notice && !error) return undefined;
+        setIngredientToastLeaving(false);
+        const leaveTimeoutId = setTimeout(() => {
+            setIngredientToastLeaving(true);
+        }, 1500);
+        const clearTimeoutId = setTimeout(() => {
+            setNotice("");
+            setError("");
+            setIngredientToastLeaving(false);
+        }, 1900);
+        return () => {
+            clearTimeout(leaveTimeoutId);
+            clearTimeout(clearTimeoutId);
+        };
+    }, [notice, error]);
 
     const fridgeStats = useMemo(() => {
         const expiringSoon = ingredients.filter(item => item.daysLeft !== null && item.daysLeft >= 0 && item.daysLeft <= 3).length;
@@ -555,8 +706,10 @@ function Fridge() {
         setError("");
         setNotice("");
         setUpdatingId(item.id);
+        setFlyingIngredientId(item.id);
 
         try {
+            await new Promise(resolve => setTimeout(resolve, 520));
             await api(`/api/ingredients/id/${item.id}`, { method: "DELETE" });
             setNotice(`${item.name} removed from your fridge.`);
             await loadIngredients();
@@ -564,6 +717,7 @@ function Fridge() {
             setError(error.message);
         } finally {
             setUpdatingId(null);
+            setFlyingIngredientId(null);
         }
     }
 
@@ -573,16 +727,41 @@ function Fridge() {
         setEditingId(item.id);
         setEditName(item.name);
         setEditExpiresAt(item.expiresAt || "");
+        setEditIcon(item.icon || ingredientIcon(item.name));
+        setShowIconPicker(false);
+        setIngredientActionMode("");
     }
 
     function cancelEditingIngredient() {
         setEditingId(null);
         setEditName("");
         setEditExpiresAt("");
+        setEditIcon("");
+        setShowIconPicker(false);
     }
 
-    async function handleUpdateIngredient(event, item) {
+    function startIngredientActionMode(mode) {
+        cancelEditingIngredient();
+        setError("");
+        setNotice("");
+        setIngredientActionMode(mode);
+    }
+
+    function handleIngredientCardSelect(item) {
+        if (ingredientActionMode === "edit") {
+            startEditingIngredient(item);
+            return;
+        }
+        if (ingredientActionMode === "delete") {
+            handleDeleteIngredient(item);
+            setIngredientActionMode("");
+        }
+    }
+
+    async function handleUpdateIngredient(event) {
         event.preventDefault();
+        const item = ingredients.find(item => item.id === editingId);
+        if (!item) return;
 
         const nextName = editName.trim();
         if (!nextName) {
@@ -599,12 +778,15 @@ function Fridge() {
                 method: "PATCH",
                 body: JSON.stringify({
                     name: nextName,
-                    expiresAt: editExpiresAt || ""
+                    expiresAt: editExpiresAt || "",
+                    icon: editIcon || ingredientIcon(nextName)
                 })
             });
             setNotice(`${nextName} updated.`);
             cancelEditingIngredient();
             await loadIngredients(query);
+            setHighlightedIngredientId(item.id);
+            setTimeout(() => setHighlightedIngredientId(null), 1400);
         } catch (error) {
             setError(error.message);
         } finally {
@@ -643,6 +825,14 @@ function Fridge() {
 
             <section className="fridge-overview-grid">
                 <div className="panel inventory-panel">
+                    {ingredientActionMode && !(error || notice) && (
+                        <div className={`ingredient-mode-hint ${ingredientActionMode === "delete" ? "danger" : ""}`}>
+                            <span>{ingredientActionMode === "edit" ? "Select an ingredient to edit" : "Select an ingredient to delete"}</span>
+                            <button type="button" onClick={() => setIngredientActionMode("")} aria-label="Cancel selection mode">
+                                X
+                            </button>
+                        </div>
+                    )}
                     <div className="panel-heading split-heading">
                         <div>
                             <h2>Current Fridge</h2>
@@ -651,79 +841,59 @@ function Fridge() {
                         <div className="inventory-tools">
                             <form className="search-box" onSubmit={handleSearch}>
                                 <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search" />
-                                <button className="secondary-action" type="submit">Search</button>
+                                <button className="search-icon-button" type="submit" aria-label="Search ingredients" title="Search ingredients">
+                                    <SearchIcon />
+                                </button>
                             </form>
                         </div>
                     </div>
 
-                    {error && <p className="error-text">{error}</p>}
-                    {notice && <p className="success-text">{notice}</p>}
+                    {(error || notice) && (
+                        <div className={`ingredient-mode-hint ${error ? "danger" : ""} status ${ingredientToastLeaving ? "is-leaving" : ""}`}>
+                            <span>{error || notice}</span>
+                        </div>
+                    )}
+
+                    <div className="ingredient-edit-fields">
+                        <div className="ingredient-bulk-actions" role="group" aria-label="Inventory actions">
+                            <button
+                                className={`icon-action ${ingredientActionMode === "edit" ? "is-active" : ""}`}
+                                type="button"
+                                onClick={() => startIngredientActionMode("edit")}
+                                title="Select an ingredient to edit"
+                                aria-label="Select an ingredient to edit"
+                            >
+                                <EditIcon />
+                            </button>
+                            <button
+                                className={`icon-action icon-action-danger ${ingredientActionMode === "delete" ? "is-active" : ""}`}
+                                type="button"
+                                onClick={() => startIngredientActionMode("delete")}
+                                title="Select an ingredient to delete"
+                                aria-label="Select an ingredient to delete"
+                            >
+                                <TrashIcon />
+                            </button>
+                        </div>
+                    </div>
 
                     <div className="inventory-list">
                         {ingredients.length > 0 ? ingredients.map(item => (
-                            editingId === item.id ? (
-                                <form
-                                    className="list-item ingredient-row ingredient-edit-row"
-                                    key={item.id}
-                                    onSubmit={event => handleUpdateIngredient(event, item)}
-                                >
-                                    <div className="ingredient-edit-fields">
-                                        <label>
-                                            Name
-                                            <input
-                                                value={editName}
-                                                onChange={event => setEditName(event.target.value)}
-                                                placeholder="Ingredient name"
-                                                required
-                                            />
-                                        </label>
-                                        <label>
-                                            Expiry date
-                                            <input
-                                                type="date"
-                                                value={editExpiresAt}
-                                                onChange={event => setEditExpiresAt(event.target.value)}
-                                            />
-                                        </label>
-                                    </div>
-                                    <div className="ingredient-actions">
-                                        <button className="primary-action compact-action" type="submit" disabled={updatingId === item.id}>
-                                            {updatingId === item.id ? "Saving..." : "Save"}
-                                        </button>
-                                        <button className="secondary-action compact-action" type="button" onClick={cancelEditingIngredient}>
-                                            Cancel
-                                        </button>
-                                    </div>
-                                </form>
-                            ) : (
-                                <article className="list-item ingredient-row" key={item.id}>
-                                    <div>
-                                        <strong>{item.name}</strong>
-                                        <span>{item.expiresAt || "No expiration date"}</span>
-                                    </div>
-                                    <div className="ingredient-actions">
-                                        <span className={`status-pill ${item.daysLeft !== null && item.daysLeft <= 3 ? "urgent" : ""}`}>
-                                            {formatExpiry(item)}
-                                        </span>
-                                        <button
-                                            className="secondary-action compact-action"
-                                            type="button"
-                                            onClick={() => startEditingIngredient(item)}
-                                        >
-                                            Edit
-                                        </button>
-                                        <button
-                                            className="danger-action"
-                                            type="button"
-                                            onClick={() => handleDeleteIngredient(item)}
-                                            disabled={updatingId === item.id}
-                                            aria-label={`Delete ${item.name}`}
-                                        >
-                                            {updatingId === item.id ? "Deleting..." : "Delete"}
-                                        </button>
-                                    </div>
-                                </article>
-                            )
+                            <button
+                                className={`ingredient-card ${ingredientActionMode ? "selectable" : ""} ${item.daysLeft !== null && item.daysLeft < 0 ? "expired" : item.daysLeft !== null && item.daysLeft <= 3 ? "warning" : ""} ${editingId === item.id ? "selected" : ""} ${highlightedIngredientId === item.id ? "updated" : ""} ${flyingIngredientId === item.id ? "fly-away" : ""}`}
+                                key={item.id}
+                                type="button"
+                                onClick={() => handleIngredientCardSelect(item)}
+                                disabled={!ingredientActionMode || updatingId === item.id || flyingIngredientId === item.id}
+                                aria-label={ingredientActionMode ? `${ingredientActionMode} ${item.name}` : item.name}
+                            >
+                                <span className="ingredient-card-icon" aria-hidden="true">{item.icon || ingredientIcon(item.name)}</span>
+                                <strong>{item.name}</strong>
+                                <span>{item.expiresAt || "No expiration date"}</span>
+                                <small className={`status-pill ${item.daysLeft !== null && item.daysLeft < 0 ? "expired" : item.daysLeft !== null && item.daysLeft <= 3 ? "urgent" : ""}`}>
+                                    {formatExpiry(item)}
+                                </small>
+                            </button>
                         )) : <div className="empty-state">No ingredients found.</div>}
                     </div>
                 </div>
@@ -755,6 +925,74 @@ function Fridge() {
                     </label>
                     <button className="primary-action full-width" type="submit" disabled={saving}>
                         {saving ? "Adding..." : "Add Ingredient"}
+                    </button>
+                </div>
+            </AppModal>
+
+            <AppModal
+                open={Boolean(editingId)}
+                onClose={cancelEditingIngredient}
+                titleId="edit-ingredient-modal-title"
+                className="form-modal"
+                as="form"
+                onSubmit={handleUpdateIngredient}
+            >
+                <div className="modal-content">
+                    <p className="eyebrow">Edit ingredient</p>
+                    <h2 id="edit-ingredient-modal-title">Edit Ingredient</h2>
+                    <p>Update the ingredient name or expiry date.</p>
+                    <div className="ingredient-icon-editor">
+                        <span className="ingredient-edit-icon" aria-hidden="true">{editIcon || ingredientIcon(editName)}</span>
+                        <button
+                            className="ingredient-icon-edit-button"
+                            type="button"
+                            onClick={() => setShowIconPicker(open => !open)}
+                            aria-label="Change ingredient icon"
+                            title="Change ingredient icon"
+                        >
+                            <EditIcon />
+                        </button>
+                    </div>
+                    {showIconPicker && (
+                        <div className="ingredient-icon-grid" aria-label="Ingredient icon choices">
+                            {ingredientIconChoices.map(icon => (
+                                <button
+                                    className={editIcon === icon ? "selected" : ""}
+                                    type="button"
+                                    key={icon}
+                                    onClick={() => {
+                                        setEditIcon(icon);
+                                        setShowIconPicker(false);
+                                    }}
+                                    aria-label={`Use ${icon} icon`}
+                                >
+                                    {icon}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                    <label>
+                        Ingredient name
+                        <input
+                            value={editName}
+                            onChange={event => setEditName(event.target.value)}
+                            placeholder="Ingredient name"
+                            required
+                        />
+                    </label>
+                    <label>
+                        Expiry date
+                        <input
+                            type="date"
+                            value={editExpiresAt}
+                            onChange={event => setEditExpiresAt(event.target.value)}
+                        />
+                    </label>
+                    <button className="primary-action full-width" type="submit" disabled={updatingId === editingId}>
+                        {updatingId === editingId ? "Saving..." : "Save Changes"}
+                    </button>
+                    <button className="secondary-action full-width" type="button" onClick={cancelEditingIngredient}>
+                        Cancel
                     </button>
                 </div>
             </AppModal>
@@ -1071,6 +1309,12 @@ function Meals() {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
     const [showMealModal, setShowMealModal] = useState(false);
+    const [editingMeal, setEditingMeal] = useState(null);
+    const [editMealType, setEditMealType] = useState("Breakfast");
+    const [editMealName, setEditMealName] = useState("");
+    const [editMealCalories, setEditMealCalories] = useState("");
+    const [updatingMealId, setUpdatingMealId] = useState(null);
+    const [deletingMeal, setDeletingMeal] = useState(null);
 
     const loadMeals = useCallback(async () => {
         const data = await api("/api/meals");
@@ -1109,6 +1353,89 @@ function Meals() {
             setError(error.message);
         } finally {
             setSaving(false);
+        }
+    }
+
+    function startEditingMeal(meal) {
+        setError("");
+        setNotice("");
+        setEditingMeal(meal);
+        setEditMealType(meal.type || "Breakfast");
+        setEditMealName(meal.name || "");
+        setEditMealCalories(String(meal.calories || 0));
+    }
+
+    function cancelEditingMeal() {
+        setEditingMeal(null);
+        setEditMealType("Breakfast");
+        setEditMealName("");
+        setEditMealCalories("");
+        setUpdatingMealId(null);
+    }
+
+    async function handleUpdateMeal(event) {
+        event.preventDefault();
+        if (!editingMeal) return;
+
+        const nextName = editMealName.trim();
+        if (!nextName) {
+            setError("Meal name is required.");
+            return;
+        }
+
+        setError("");
+        setNotice("");
+        setUpdatingMealId(editingMeal.id);
+
+        try {
+            await api(`/api/meals/${editingMeal.id}`, {
+                method: "PATCH",
+                body: JSON.stringify({
+                    type: editMealType,
+                    name: nextName,
+                    calories: editMealCalories ? Number(editMealCalories) : 0
+                })
+            });
+            setNotice(`${nextName} updated.`);
+            cancelEditingMeal();
+            await loadMeals();
+        } catch (error) {
+            setError(error.message);
+        } finally {
+            setUpdatingMealId(null);
+        }
+    }
+
+    function startDeletingMeal(meal) {
+        setError("");
+        setNotice("");
+        setDeletingMeal(meal);
+    }
+
+    function cancelDeletingMeal() {
+        setDeletingMeal(null);
+        setUpdatingMealId(null);
+    }
+
+    async function handleDeleteMeal(meal = deletingMeal || editingMeal) {
+        if (!meal) return;
+
+        setError("");
+        setNotice("");
+        setUpdatingMealId(meal.id);
+
+        try {
+            await api(`/api/meals/${meal.id}`, { method: "DELETE" });
+            setNotice(`${meal.name} removed from meal history.`);
+            if (editingMeal?.id === meal.id) {
+                cancelEditingMeal();
+            }
+            cancelDeletingMeal();
+            await loadMeals();
+        } catch (error) {
+            setError(error.message);
+        } finally {
+            setUpdatingMealId(null);
         }
     }
 
@@ -1152,11 +1479,32 @@ function Meals() {
                         {meals.map(meal => (
                             <article className="list-item meal-row" key={meal.id}>
                                 <span>{meal.type}</span>
-                                <div>
+                                <div className="meal-main">
                                     <strong>{meal.name}</strong>
                                     <small>{meal.protein || 0}g protein / {meal.carbs || 0}g carbs / {meal.fat || 0}g fat</small>
                                 </div>
                                 <span>{meal.calories} kcal</span>
+                                <div className="meal-actions">
+                                    <button
+                                        className="icon-action"
+                                        type="button"
+                                        onClick={() => startEditingMeal(meal)}
+                                        aria-label={`Edit ${meal.name}`}
+                                        title={`Edit ${meal.name}`}
+                                    >
+                                        <EditIcon />
+                                    </button>
+                                    <button
+                                        className="icon-action icon-action-danger"
+                                        type="button"
+                                        onClick={() => startDeletingMeal(meal)}
+                                        disabled={updatingMealId === meal.id}
+                                        aria-label={`Delete ${meal.name}`}
+                                        title={`Delete ${meal.name}`}
+                                    >
+                                        <TrashIcon />
+                                    </button>
+                                </div>
                             </article>
                         ))}
                     </div>
@@ -1202,6 +1550,78 @@ function Meals() {
                     <button className="primary-action full-width" type="submit" disabled={saving}>
                         {saving ? "Estimating..." : "Add Record"}
                     </button>
+                </div>
+            </AppModal>
+
+            <AppModal
+                open={Boolean(editingMeal)}
+                onClose={cancelEditingMeal}
+                titleId="edit-meal-modal-title"
+                className="form-modal"
+                as="form"
+                onSubmit={handleUpdateMeal}
+            >
+                <div className="modal-content">
+                    <div className="modal-title-row">
+                        <div>
+                            <p className="eyebrow">Edit record</p>
+                            <h2 id="edit-meal-modal-title">Edit Meal</h2>
+                        </div>
+                    </div>
+                    <p>Update this meal record or remove it from your history.</p>
+                    <div className="meal-type-control" role="group" aria-label="Meal type">
+                        {mealTypes.map(mealType => (
+                            <button
+                                className={editMealType === mealType ? "selected" : ""}
+                                type="button"
+                                key={mealType}
+                                onClick={() => setEditMealType(mealType)}
+                            >
+                                {mealType}
+                            </button>
+                        ))}
+                    </div>
+                    <input value={editMealName} onChange={event => setEditMealName(event.target.value)} placeholder="Food name" required />
+                    <input
+                        type="number"
+                        min="0"
+                        value={editMealCalories}
+                        onChange={event => setEditMealCalories(event.target.value)}
+                        placeholder="kcal"
+                    />
+                    <button className="primary-action full-width" type="submit" disabled={updatingMealId === editingMeal?.id}>
+                        {updatingMealId === editingMeal?.id ? "Saving..." : "Save Changes"}
+                    </button>
+                </div>
+            </AppModal>
+
+            <AppModal
+                open={Boolean(deletingMeal)}
+                onClose={cancelDeletingMeal}
+                titleId="delete-meal-modal-title"
+                className="form-modal"
+            >
+                <div className="modal-content">
+                    <div className="modal-title-row">
+                        <div>
+                            <p className="eyebrow">Delete record</p>
+                            <h2 id="delete-meal-modal-title">Delete Meal</h2>
+                        </div>
+                    </div>
+                    <p>{deletingMeal ? `${deletingMeal.name} will be removed from your meal history.` : "This meal will be removed from your history."}</p>
+                    <div className="modal-action-row">
+                        <button
+                            className="danger-action full-width"
+                            type="button"
+                            onClick={() => handleDeleteMeal(deletingMeal)}
+                            disabled={updatingMealId === deletingMeal?.id}
+                        >
+                            {updatingMealId === deletingMeal?.id ? "Deleting..." : "Delete Meal"}
+                        </button>
+                        <button className="secondary-action full-width" type="button" onClick={cancelDeletingMeal}>
+                            Cancel
+                        </button>
+                    </div>
                 </div>
             </AppModal>
         </main>
