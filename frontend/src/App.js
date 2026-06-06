@@ -166,11 +166,70 @@ function Nav({ page, navigate, user, onLogout }) {
     );
 }
 
-function Home({ navigate }) {
+function CountUpNumber({ value, suffix = "" }) {
+    const [displayValue, setDisplayValue] = useState(0);
+
+    useEffect(() => {
+        const target = Number(value) || 0;
+        if (target === 0) {
+            setDisplayValue(0);
+            return undefined;
+        }
+
+        const duration = 700;
+        const startedAt = performance.now();
+        let frameId;
+
+        function animate(now) {
+            const progress = Math.min(1, (now - startedAt) / duration);
+            setDisplayValue(Math.round(target * progress));
+            if (progress < 1) {
+                frameId = requestAnimationFrame(animate);
+            }
+        }
+
+        frameId = requestAnimationFrame(animate);
+        return () => cancelAnimationFrame(frameId);
+    }, [value]);
+
+    return <>{displayValue.toLocaleString()}{suffix}</>;
+}
+
+function Home({ navigate, user }) {
     const highlights = [
         "Track what is inside your fridge.",
         "Use ingredients before they spoil.",
         "Get recipe ideas from what you already have."
+    ];
+
+    const [landingStats, setLandingStats] = useState({
+        ingredientCount: 0,
+        expiringSoonCount: 0,
+        mealCount: 0,
+        todayCalories: 0
+    });
+
+    useEffect(() => {
+        api("/api/landing-stats")
+            .then(data => setLandingStats({
+                ingredientCount: data.ingredientCount || 0,
+                expiringSoonCount: data.expiringSoonCount || 0,
+                mealCount: data.mealCount || 0,
+                todayCalories: data.todayCalories || 0
+            }))
+            .catch(() => setLandingStats({
+                ingredientCount: 0,
+                expiringSoonCount: 0,
+                mealCount: 0,
+                todayCalories: 0
+            }));
+    }, [user]);
+
+    const statCards = [
+        { label: "Ingredients Saved", value: landingStats.ingredientCount, suffix: "", note: "items tracked in your fridge" },
+        { label: "Expiring Soon", value: landingStats.expiringSoonCount, suffix: "", note: "items within 3 days" },
+        { label: "Meals Logged", value: landingStats.mealCount, suffix: "", note: "records stored in your meal log" },
+        { label: "Today Calories", value: landingStats.todayCalories, suffix: " kcal", note: "from today's meals" }
     ];
 
     const featureSteps = [
@@ -248,6 +307,23 @@ function Home({ navigate }) {
                     </div>
                 </div>
             </section>
+
+
+            <SectionReveal as="section" className="landing-stats" aria-label="Live ReciFridge statistics" delay={120}>
+                <div className="landing-stats-heading">
+                    <p className="section-label">LIVE STATS</p>
+                    <h2>{user ? "Your fridge data, live from SQLite." : "Sign in to see your live fridge stats."}</h2>
+                </div>
+                <div className="landing-stats-grid">
+                    {statCards.map(card => (
+                        <article className="landing-stat-card" key={card.label}>
+                            <span>{card.label}</span>
+                            <strong><CountUpNumber value={card.value} suffix={card.suffix} /></strong>
+                            <p>{card.note}</p>
+                        </article>
+                    ))}
+                </div>
+            </SectionReveal>
 
             <SectionReveal as="section" className="landing-intro" aria-labelledby="landing-intro-title" delay={80}>
                 <p className="section-label">WHY IT MATTERS</p>
@@ -1305,7 +1381,7 @@ function App() {
     return (
         <>
             <Nav page={page} navigate={navigate} user={user} onLogout={handleLogout}></Nav>
-            {page === "home" && <Home navigate={navigate}></Home>}
+            {page === "home" && <Home navigate={navigate} user={user}></Home>}
             {page === "auth" && <Home navigate={navigate}></Home>}
             {page === "fridge" && <RequireAuth user={user} onAuth={setUser}><Fridge></Fridge></RequireAuth>}
             {page === "recipes" && <RequireAuth user={user} onAuth={setUser}><Recipes></Recipes></RequireAuth>}

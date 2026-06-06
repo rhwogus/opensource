@@ -13,6 +13,7 @@ from services.database import (
     create_user,
     get_user_by_id,
     get_user_by_username,
+    landing_stats,
     list_ingredients,
     list_meals,
     list_recipes,
@@ -36,6 +37,19 @@ def index():
 @api_bp.route("/health", methods=["GET"])
 def health():
     return jsonify({"status": "ok", "server": "flask"})
+
+
+@api_bp.route("/landing-stats", methods=["GET"])
+def get_landing_stats():
+    user_id = _current_user_id()
+    if user_id is None:
+        return jsonify({
+            "ingredientCount": 0,
+            "expiringSoonCount": 0,
+            "mealCount": 0,
+            "todayCalories": 0,
+        })
+    return jsonify(landing_stats(user_id))
 
 def _current_user_id():
     return session.get("user_id")

@@ -2076,6 +2076,63 @@ input:focus {
     text-align: center;
 }
 
+
+.landing-stats {
+    display: grid;
+    gap: 18px;
+    padding: clamp(20px, 4vw, 34px) 0;
+}
+
+.landing-stats-heading {
+    display: grid;
+    gap: 8px;
+    text-align: center;
+}
+
+.landing-stats-heading h2 {
+    margin: 0;
+    color: var(--green-dark);
+    font-size: clamp(24px, 4vw, 42px);
+    line-height: 1.1;
+}
+
+.landing-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.landing-stat-card {
+    display: grid;
+    gap: 10px;
+    min-height: 156px;
+    padding: 20px;
+    border: 1px solid rgba(220, 229, 223, 0.88);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.76);
+    box-shadow: 0 16px 34px rgba(25, 69, 50, 0.08);
+}
+
+.landing-stat-card span {
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.landing-stat-card strong {
+    color: var(--green-dark);
+    font-size: clamp(28px, 4vw, 42px);
+    line-height: 1;
+}
+
+.landing-stat-card p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.45;
+}
+
 .landing-intro {
     display: grid;
     gap: 14px;
