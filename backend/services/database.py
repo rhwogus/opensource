@@ -566,3 +566,36 @@ def dashboard_data(user_id: int) -> dict:
         "nutritionBalance": nutrition_balance,
         "macroTotals": {"protein": protein, "carbs": carbs, "fat": fat},
     }
+
+def landing_stats(user_id: int) -> dict:
+    with get_connection() as conn:
+        ingredient_count = conn.execute("SELECT COUNT (*) AS c FROM ingredients WHERE user_id = ?", (user_id,),).fetchone()["c"]
+
+        expiring_soon_cnt = conn.execute(
+            """
+            SELECT COUNT(*) AS c FROM ingredients
+            WHERE user_id = ?
+                AND expires_at IS NOT NULL
+                AND date(expires_at) <= date('now', '+3 days')
+            """,
+            (user_id,),
+        ).fetchone()["c"]
+
+        meal_cnt = conn.execute(
+            "SELECT COUNT(*) AS c FROM meals WHERE user_id = ?", (user_id,),
+        ).fetchone()["c"]
+
+        today_kcal = conn.execute(
+            """
+            SELECT COALESCE(SUM(calories), 0) AS c FROM meals
+            WHERE user_id = ? AND date(eaten_at) = date('now')
+            """,
+            (user_id,),
+        ).fetchone()["c"]
+
+    return {
+        "ingredientCount": ingredient_count,
+        "expiringSoonCount": expiring_soon_cnt,
+        "mealCount": meal_cnt,
+        "todayCalories": today_kcal,
+    }
