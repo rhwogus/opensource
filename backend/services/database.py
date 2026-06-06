@@ -576,7 +576,18 @@ def landing_stats(user_id: int) -> dict:
             SELECT COUNT(*) AS c FROM ingredients
             WHERE user_id = ?
                 AND expires_at IS NOT NULL
+                AND date(expires_at) >= date('now')
                 AND date(expires_at) <= date('now', '+3 days')
+            """,
+            (user_id,),
+        ).fetchone()["c"]
+
+        expired_cnt = conn.execute(
+            """
+            SELECT COUNT(*) AS c FROM ingredients
+            WHERE user_id = ?
+                AND expires_at IS NOT NULL
+                AND date(expires_at) < date('now')
             """,
             (user_id,),
         ).fetchone()["c"]
@@ -596,6 +607,7 @@ def landing_stats(user_id: int) -> dict:
     return {
         "ingredientCount": ingredient_count,
         "expiringSoonCount": expiring_soon_cnt,
+        "expiredCount": expired_cnt,
         "mealCount": meal_cnt,
         "todayCalories": today_kcal,
     }
