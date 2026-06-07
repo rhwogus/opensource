@@ -2398,6 +2398,11 @@ body::before {
 
 .site-nav,
 .navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 100;
     background: rgba(255, 255, 255, 0.72);
     border-bottom: 1px solid rgba(255, 255, 255, 0.58);
     box-shadow: 0 14px 38px rgba(6, 78, 59, 0.035);
@@ -2407,9 +2412,14 @@ body::before {
 
 .site-nav::after,
 .navbar::after {
+    content: "";
+    position: absolute;
     height: 32px;
     bottom: -32px;
+    left: 0;
+    width: 100%;
     background: linear-gradient(180deg, rgba(240, 253, 244, 0.42), rgba(240, 253, 244, 0));
+    pointer-events: none;
 }
 
 .nav-links button {
@@ -2428,7 +2438,6 @@ body::before {
     border-color: rgba(34, 197, 94, 0.28) !important;
     box-shadow: 0 10px 24px rgba(34, 197, 94, 0.12) !important;
 }
-
 .hero-section,
 .page-header,
 .panel,
@@ -2466,8 +2475,7 @@ body::before {
 }
 
 .feature-card {
-    background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.36));
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.36));
 }
 
 .feature-icon {
@@ -2503,13 +2511,14 @@ input:focus {
 
 .landing-home {
     position: relative;
-    width: min(1180px, calc(100% - 40px));
+    width: 100%;
     margin: 0 auto;
-    padding: 40px 0 80px;
+    padding: 0 0 80px; /* Removed top padding to let hero reach the very top screen edge */
     display: grid;
     gap: 26px;
 }
 
+/* Base resets for sections inside landing home */
 .landing-hero,
 .landing-intro,
 .feature-step {
@@ -2519,10 +2528,27 @@ input:focus {
     box-shadow: none;
 }
 
+/* Full Bleed Desktop Background Section */
 .landing-hero {
+    min-height: 100vh;
+    width: 100vw;
     position: relative;
-    overflow: hidden;
-    /* padding: clamp(28px, 5vw, 72px); */
+    left: 50%;
+    transform: translateX(-50%);
+    
+    background: url('./images/vegetables_landing.jpg') center center / cover no-repeat;
+    
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 120px 20px 60px; /* Padding accommodates top nav overlay and cushions text */
+    box-sizing: border-box;
+}
+.hero-container {
+    max-width: none;
+    width: 100%;
+    padding: 0;
 }
 
 .landing-hero::after {
