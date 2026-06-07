@@ -436,93 +436,90 @@ function Home({ navigate, user }) {
 
             <SectionReveal as="section" className="team-section" aria-label="Meet our team" delay={100}>
                 <div className="team-heading">
-                    <p className="section-label">OUR TEAM</p>
-                    <h2>Meet the People Behind ReciFridge</h2>
+                    <p className="section-label">Our Team</p>
+                    <h2>Meet the People <br/><span>Behind ReciFridge</span></h2>
                     <p>A passionate team dedicated to reducing food waste and making cooking easier.</p>
                 </div>
-            <div className="team-grid">
-                <article className="team-card">
-                    <div className="team-avatar">
-                        <span>T</span>
-                    </div>
+                <div className="team-grid">
+                    <article className="team-card">
+                        <div className="team-avatar">
+                            <span>T</span>
+                        </div>
 
-                    <h3>Tergel Nyamlkhagva</h3>
-                    <p className="team-role">Frontend Developer</p>
-                    <p className="team-bio">
-                        Crafting beautiful and intuitive user 
-                        interfaces for the best fridge management experience.
-                    </p>
-                    <a
-                    href="https://github.com/tergeln"
-                    className="team-link"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    >
-                        GitHub Profile
-                    </a>
-                </article>
+                        <h3>Tergel Nyamlkhagva</h3>
+                        <p className="team-role">Frontend Developer</p>
+                        <p className="team-bio">
+                            Crafting beautiful and intuitive user 
+                            interfaces for the best fridge management experience.
+                        </p>
+                        <a
+                        href="https://github.com/tergeln"
+                        className="team-link"
+                        target="_blank"
+                        rel="noopener noreferrer">
+                            GitHub Profile
+                        </a>
+                    </article>
 
-                <article className="team-card">
-                     <div className="team-avatar">
-                        <span>N</span>
-                    </div>
-                    <h3>나희</h3>
-                    <p className="team-role">Frontend Developer</p>
-                    <p className="team-bio">
-                    Building responsive and accessible 
-                    interfaces that make recipe discovery delightful.
-                    </p>
-                    <a
-                    href="https://github.com/happyuo"
-                    className="team-link"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    >
-                        GitHub Profile
-                    </a>
-                </article>
+                    <article className="team-card">
+                        <div className="team-avatar">
+                            <span>N</span>
+                        </div>
+                        <h3>나희</h3>
+                        <p className="team-role">Frontend Developer</p>
+                        <p className="team-bio">
+                            Building responsive and accessible 
+                            interfaces that make recipe discovery delightful.
+                        </p>
+                        <a href="https://github.com/happyuo"
+                        className="team-link"
+                        target="_blank"
+                        rel="noopener noreferrer">
+                            GitHub Profile
+                        </a>
+                    </article>
 
-                <article className="team-card">
-                    <div className="team-avatar">
-                        <span>J</span>
-                    </div>
-                    <h3>Jee Seoyoon</h3>
-                    <p className="team-role">Backend Developer</p>
-                    <p className="team-bio">
-                        Developing robust APIs and 
-                        database systems that power your fridge 
-                        tracking seamlessly.
-                    </p>
-                    <a
-                    href="https://github.com/jeeseoyoon"
-                    className="team-link"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    >
-                         GitHub Profile
-                    </a>
-                </article>
+                    <article className="team-card">
+                        <div className="team-avatar">
+                            <span>J</span>
+                        </div>
+                        <h3>Jee Seoyoon</h3>
+                        <p className="team-role">Backend Developer</p>
+                        <p className="team-bio">
+                            Developing robust APIs and 
+                            database systems that power your fridge 
+                            tracking seamlessly.
+                        </p>
+                        <a
+                        href="https://github.com/jeeseoyoon"
+                        className="team-link"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        >
+                            GitHub Profile
+                        </a>
+                    </article>
 
-                <article className="team-card">
-                    <div className="team-avatar">
-                        <span>K</span>
-                    </div>
-                    <h3>Ko Jehyeon</h3>
-                    <p className="team-role">Backend Developer</p>
-                    <p className="team-bio">
-                        Implementing AI-powered recipe recommendations and smart expiry date predictions.
-                    </p>
-                    <a
+                    <article className="team-card">
+                        <div className="team-avatar">
+                            <span>K</span>
+                        </div>
+                        <h3>Ko Jehyeon</h3>
+                        <p className="team-role">Backend Developer</p>
+                        <p className="team-bio">
+                            Implementing AI-powered recipe recommendations and smart expiry date predictions.
+                        </p>
+                        <a
                         href="https://github.com/rhwogus"
                         className="team-link"
                         target="_blank"
                         rel="noopener noreferrer"
-                    >
-                        GitHub Profile
-                    </a>
-                </article>
-            </div>
-        </SectionReveal>
+                        >
+                            GitHub Profile
+                        </a>
+                    </article>
+                </div>
+            </SectionReveal>
 
             <footer className="site-footer">
                 <div className="footer-content">
