@@ -397,25 +397,24 @@ function Home({ navigate, user }) {
                     </div>
                 )}
             </SectionReveal>
-
             <SectionReveal as="section" className="landing-intro" aria-labelledby="landing-intro-title" delay={80}>
-                <p className="section-label">Why It Matters</p>
-                <h2 id="landing-intro-title">
-                    Stop guessing what to cook<br/>
-                    <span>or what to use first.</span>
-                </h2>
-
-                <p>
-                    ReciFridge keeps the fridge view, recipe suggestions, meal logs, and dashboard in one place — 
-                    so you can make quicker decisions and waste less food.
-                </p>
-
+                <div className="landing-intro-inner">
+                    <p className="section-label">Why It Matters</p>
+                    <h2 id="landing-intro-title">
+                        Stop guessing what to cook<br/>
+                        <span>or what to use first.</span>
+                    </h2>
+                    <p>
+                        ReciFridge keeps the fridge view, recipe suggestions, meal logs, and dashboard in one place —
+                        so you can make quicker decisions and waste less food.
+                    </p>
+                </div>
                 <div className="scroll-down-arrow1" onClick={() => { document.getElementById("stats-section")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>
                     <span className="scroll-label">Scroll to explore</span>
                     <span className="scroll-line"></span>
                     <span className="scroll-circle">↓</span>
                 </div>
-                </SectionReveal>
+            </SectionReveal>
 
             <section className="feature-flow" aria-label="ReciFridge features">
                 {featureSteps.map(step => (

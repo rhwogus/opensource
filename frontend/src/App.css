@@ -763,10 +763,10 @@ textarea:focus {
     }
 }
 
-/* ── SECTION ───────────────────────────────────────────── */
+/*  SECTION  */
 .landing-stats {
     padding: clamp(64px, 10vw, 120px) max(16px, 5vw);
-    background: #149580;
+    background: #1a4a3a  ;
     position: relative;
     overflow: hidden;
 }
@@ -784,7 +784,6 @@ textarea:focus {
     pointer-events: none;
 }
 
-/* ── HEADING ───────────────────────────────────────────── */
 .landing-stats-heading {
     text-align: center;
     margin-bottom: 56px;
@@ -1059,10 +1058,43 @@ textarea:focus {
 /*  INTRO SECTION */
 .landing-intro {
     position: relative;
+    max-width: 100%;
+    margin: 0;
+    padding: clamp(80px, 12vw, 160px) max(16px, 5vw) clamp(100px, 14vw, 180px);
+    text-align: center;
+    background: #149580;
+    overflow: hidden;
+}
+
+.landing-intro::before {
+    content: '';
+    position: absolute;
+    top: -100px;
+    left: -100px;
+    width: 500px;
+    height: 500px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0, 255, 159, 0.08), transparent 70%);
+    pointer-events: none;
+}
+
+.landing-intro::after {
+    content: '';
+    position: absolute;
+    bottom: -100px;
+    right: -100px;
+    width: 400px;
+    height: 400px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0, 255, 159, 0.06), transparent 70%);
+    pointer-events: none;
+}
+
+.landing-intro-inner {
+    position: relative;
+    z-index: 1;
     max-width: 1000px;
     margin: 0 auto;
-    padding: clamp(80px, 12vw, 160px) 32px clamp(100px, 14vw, 180px);
-    text-align: center;
 }
 
 .landing-intro .section-label {
@@ -1071,10 +1103,10 @@ textarea:focus {
     gap: 8px;
     padding: 7px 18px;
     margin-bottom: 36px;
-    border: 1px solid rgba(0, 153, 79, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 100px;
-    background: rgba(0, 153, 79, 0.08);
-    color: var(--green-darker);
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.85);
     font-size: 11px;
     font-weight: 800;
     letter-spacing: 0.18em;
@@ -1086,14 +1118,14 @@ textarea:focus {
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: var(--green-darker);
+    background: #00ff9f;
     flex-shrink: 0;
 }
 
 .landing-intro h2 {
     max-width: 820px;
     margin: 0 auto 32px;
-    color: var(--ink);
+    color: #fff;
     font-family: "Space Grotesk", sans-serif;
     font-size: clamp(2.2rem, 5vw, 4rem);
     line-height: 1.05;
@@ -1102,7 +1134,7 @@ textarea:focus {
 }
 
 .landing-intro h2 span {
-    background: linear-gradient(135deg, var(--green-darker), var(--green));
+    background: linear-gradient(135deg, #00ff9f, #00cc7a);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -1111,7 +1143,7 @@ textarea:focus {
 .landing-intro p {
     max-width: 580px;
     margin: 0 auto 56px;
-    color: var(--muted);
+    color: rgba(255, 255, 255, 0.65);
     font-size: 1.05rem;
     line-height: 1.85;
     font-weight: 500;
@@ -1128,6 +1160,66 @@ textarea:focus {
     gap: 6px;
     cursor: pointer;
     transition: opacity 0.3s ease;
+    z-index: 1;
+}
+
+.scroll-down-arrow1:hover {
+    opacity: 0.7;
+}
+
+.scroll-label {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.45);
+    white-space: nowrap;
+}
+
+.scroll-line {
+    width: 2px;
+    height: 56px;
+    background: linear-gradient(to bottom, rgba(0, 255, 159, 0.8), transparent);
+}
+
+.scroll-circle {
+    width: 52px;
+    height: 52px;
+    border: 1.5px solid rgba(0, 255, 159, 0.35);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #00ff9f;
+    font-size: 22px;
+    background: rgba(0, 255, 159, 0.06);
+    animation: enhancedBounce 3s ease-in-out infinite;
+    transition: all 0.3s ease;
+}
+
+.scroll-down-arrow1:hover .scroll-circle {
+    background: rgba(0, 255, 159, 0.14);
+    border-color: rgba(0, 255, 159, 0.6);
+    transform: scale(1.1);
+}
+
+@keyframes enhancedBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(6px); }
+}
+
+@media (max-width: 768px) {
+    .landing-intro {
+        padding: 64px 20px 100px;
+    }
+
+    .landing-intro p {
+        margin-bottom: 48px;
+    }
+
+    .scroll-down-arrow1 {
+        bottom: 28px;
+    }
 }
 
 .scroll-down-arrow1:hover {
@@ -1194,32 +1286,46 @@ textarea:focus {
     grid-template-columns: auto 1fr auto;
     gap: 48px;
     align-items: center;
+
     padding: 56px;
-    border: 2px solid var(--line);
+
+    border: 2px solid rgba(113, 221, 194, 0.15);
     border-radius: 32px;
+
     background:
-        linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.85)),
-        white;
-    backdrop-filter: blur(30px) saturate(200%);
+    linear-gradient(
+        135deg,
+        rgba(171, 241, 188, 0.75),
+        rgba(215, 244, 255, 0.75)
+    );
+    backdrop-filter: blur(20px);
+
     box-shadow:
-        0 15px 50px rgba(0, 0, 0, 0.08),
-        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        0 15px 50px rgba(0, 0, 0, 0.06),
+        0 10px 40px rgba(120, 220, 210, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+
     transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+
     position: relative;
     overflow: hidden;
 }
 
 .feature-step::before {
-    content: '';
+    content: "";
     position: absolute;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    width: 6px;
-    background: linear-gradient(180deg, var(--green), var(--green-dark));
-    transform: scaleY(0);
-    transform-origin: top;
-    transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    top: -100px;
+    right: -100px;
+    width: 250px;
+    height: 250px;
+    border-radius: 50%;
+    background: radial-gradient(
+        circle,
+        rgba(95, 255, 197, 0.18),
+        rgba(125, 211, 252, 0.10),
+        transparent 70%
+    );
+    pointer-events: none;
 }
 
 .feature-step::after {
