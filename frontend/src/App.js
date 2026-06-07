@@ -364,6 +364,10 @@ function Home({ navigate, user }) {
                         ))}
                     </div>
                 </div>
+
+                <div className="scroll-down-arrow" aria-hidden="true">
+                    &#x2193; {/* ↓ Unicode arrow */}
+                </div>
             </section>
 
 
@@ -426,6 +430,128 @@ function Home({ navigate, user }) {
                     </SectionReveal>
                 ))}
             </section>
+
+            <SectionReveal as="section" className="team-section" aria-label="Meet our team" delay={100}>
+                <div className="team-heading">
+                    <p className="section-label">OUR TEAM</p>
+                    <h2>Meet the People Behind ReciFridge</h2>
+                    <p>A passionate team dedicated to reducing food waste and making cooking easier.</p>
+                </div>
+<div className="team-grid">
+    <article className="team-card">
+        <div className="team-avatar">
+            <span>T</span>
+        </div>
+        <h3>Tergel Nyamlkhagva</h3>
+        <p className="team-role">Frontend Developer</p>
+        <p className="team-bio">
+            Crafting beautiful and intuitive user interfaces for the best fridge management experience.
+        </p>
+        <a
+            href="https://github.com/tergeln"
+            className="team-link"
+            target="_blank"
+            rel="noopener noreferrer"
+        >
+            GitHub Profile
+        </a>
+    </article>
+
+    <article className="team-card">
+        <div className="team-avatar">
+            <span>T</span>
+        </div>
+        <h3>나희</h3>
+        <p className="team-role">Frontend Developer</p>
+        <p className="team-bio">
+            Building responsive and accessible interfaces that make recipe discovery delightful.
+        </p>
+        <a
+            href="https://github.com/happyuo"
+            className="team-link"
+            target="_blank"
+            rel="noopener noreferrer"
+        >
+            GitHub Profile
+        </a>
+    </article>
+
+    <article className="team-card">
+        <div className="team-avatar">
+            <span>T</span>
+        </div>
+        <h3>Jee Seoyoon</h3>
+        <p className="team-role">Backend Developer</p>
+        <p className="team-bio">
+            Developing robust APIs and database systems that power your fridge tracking seamlessly.
+        </p>
+        <a
+            href="https://github.com/jeeseoyoon"
+            className="team-link"
+            target="_blank"
+            rel="noopener noreferrer"
+        >
+            GitHub Profile
+        </a>
+    </article>
+
+    <article className="team-card">
+        <div className="team-avatar">
+            <span>T</span>
+        </div>
+        <h3>Ko Jehyeon</h3>
+        <p className="team-role">Backend Developer</p>
+        <p className="team-bio">
+            Implementing AI-powered recipe recommendations and smart expiry date predictions.
+        </p>
+        <a
+            href="https://github.com/rhwogus"
+            className="team-link"
+            target="_blank"
+            rel="noopener noreferrer"
+        >
+            GitHub Profile
+        </a>
+    </article>
+</div>
+            </SectionReveal>
+
+            <footer className="site-footer">
+                <div className="footer-content">
+                    <div className="footer-brand">
+                        <div className="footer-logo">
+                            <img src="/logo.png" alt="ReciFridge" />
+                            <span>ReciFridge</span>
+                        </div>
+                        <p>Smart fridge management for a waste-free kitchen.</p>
+                    </div>
+                    <div className="footer-links">
+                        <div className="footer-column">
+                            <h4>Product</h4>
+                            <button type="button" onClick={() => navigate("fridge")}>Fridge</button>
+                            <button type="button" onClick={() => navigate("recipes")}>Recipes</button>
+                            <button type="button" onClick={() => navigate("meals")}>Meals</button>
+                            <button type="button" onClick={() => navigate("dashboard")}>Dashboard</button>
+                        </div>
+                        <div className="footer-column">
+                            <h4>Company</h4>
+                            <a href="#about">About Us</a>
+                            <a href="#team">Team</a>
+                            <a href="#contact">Contact</a>
+                        </div>
+                        <div className="footer-column">
+                            <h4>Support</h4>
+                            <a href="#help">Help Center</a>
+                            <a href="#privacy">Privacy Policy</a>
+                            <a href="#terms">Terms of Service</a>
+                        </div>
+                    </div>
+                </div>
+                <div className="footer-bottom">
+                    <p>&copy; {new Date().getFullYear()} ReciFridge. All rights reserved.</p>
+                    <p>Built with care to reduce food waste and inspire cooking.</p>
+                </div>
+            </footer>
 
         </main>
     );
