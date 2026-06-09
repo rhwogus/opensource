@@ -94,6 +94,49 @@ function TrashIcon() {
     );
 }
 
+function CloseIcon() {
+    return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 6l12 12" />
+            <path d="m18 6-12 12" />
+        </svg>
+    );
+}
+
+function LoadingScreen({ label = "Loading..." }) {
+    return (
+        <main className="page-shell loading-shell">
+            <div className="loading-card" role="status" aria-live="polite">
+                <div className="loading-spinner" aria-hidden="true"></div>
+                <p>{label}</p>
+            </div>
+        </main>
+    );
+}
+
+function EmptyState({ icon = "📭", title, description }) {
+    return (
+        <div className="empty-state-card">
+            <span className="empty-state-icon" aria-hidden="true">{icon}</span>
+            <strong>{title}</strong>
+            {description && <p>{description}</p>}
+        </div>
+    );
+}
+
+const weekdayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function recentWeekdayLabels(count = 7) {
+    const labels = [];
+    const today = new Date();
+    for (let index = count - 1; index >= 0; index -= 1) {
+        const date = new Date(today);
+        date.setDate(today.getDate() - index);
+        labels.push(weekdayLabels[date.getDay()]);
+    }
+    return labels;
+}
+
 function SearchIcon() {
     return (
         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -162,15 +205,31 @@ function SectionReveal({ as: Tag = "section", className = "", delay = 0, childre
 function Nav({ page, navigate, user, onLogout }) {
     const [open, setOpen] = useState(false);
 
+    function handleAuthAction() {
+        if (user) {
+            onLogout();
+        } else {
+            navigate("auth");
+        }
+        setOpen(false);
+    }
+
     return (
         <nav className="site-nav">
             <button className="logo-button" type="button" onClick={() => navigate("home")}>
-                <img src="/logo.png" width="42" height="42" alt="" />
+                <img src="/logo.png" width="36" height="36" alt="" />
                 <span>ReciFridge</span>
             </button>
 
-            <button className="menu-toggle" type="button" onClick={() => setOpen(!open)} aria-label="Toggle navigation" aria-expanded={open} aria-controls="site-nav-links">
-                ☰
+            <button
+                className="menu-toggle"
+                type="button"
+                onClick={() => setOpen(!open)}
+                aria-label="Toggle navigation"
+                aria-expanded={open}
+                aria-controls="site-nav-links"
+            >
+                {open ? "✕" : "☰"}
             </button>
 
             <ul id="site-nav-links" className={`nav-links ${open ? "active" : ""}`}>
@@ -188,34 +247,23 @@ function Nav({ page, navigate, user, onLogout }) {
                         </button>
                     </li>
                 ))}
-                <li>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            if (user) {
-                                onLogout();
-                            } else {
-                                navigate("auth");
-                            }
-                            setOpen(false);
-                        }}
-                    >
+                <li className="nav-mobile-auth">
+                    <button type="button" onClick={handleAuthAction}>
                         {user ? "Logout" : "Login"}
                     </button>
                 </li>
             </ul>
 
-            {/* <div className="nav-auth">
+            <div className="nav-auth">
                 {user ? (
                     <>
-                        <span>{user.username}</span>
-                        <button className="secondary-action compact-action" type="button" onClick={onLogout}>Logout</button>
+                        <span className="nav-username">{user.username}</span>
+                        <button className="compact-action" type="button" onClick={onLogout}>Logout</button>
                     </>
                 ) : (
-                    <button className="secondary-action compact-action" type="button" onClick={() => navigate("auth")}>Login</button>
+                    <button className="compact-action primary" type="button" onClick={() => navigate("auth")}>Login</button>
                 )}
-            </div> */}
-
+            </div>
         </nav>
     );
 }
@@ -341,37 +389,66 @@ function Home({ navigate, user }) {
             </div>
 
             <section className="landing-hero">
-                <div className="landing-hero-copy">
-                    <p className="eyebrow">Smart fridge helper</p>
-                    <div className="hero-logo landing-logo">
-                        <img src="/logo.png" alt="ReciFridge" />
+                <div className="landing-hero-glow" aria-hidden="true" />
+
+                <div className="landing-hero-inner">
+                    <div className="landing-hero-copy">
+                        <p className="eyebrow">Smart fridge helper</p>
+                        <div className="hero-logo landing-logo">
+                            <img src="/logo.png" alt="ReciFridge" />
+                        </div>
+                        <h1>ReciFridge</h1>
+                        <p className="hero-subtitle">
+                            Keep track of what is in your fridge. Use ingredients before they go bad. Get meal ideas from what you already have.
+                        </p>
+                        <div className="hero-actions">
+                            <button className="hero-btn" type="button" onClick={() => navigate("fridge")}>
+                                Add Ingredients
+                            </button>
+                            <button className="hero-btn hero-btn-secondary" type="button" onClick={() => navigate("recipes")}>
+                                Get Recipe Ideas
+                            </button>
+                        </div>
+                        <div className="hero-highlights" aria-label="Key benefits">
+                            {highlights.map(item => (
+                                <p key={item} className="hero-highlight">{item}</p>
+                            ))}
+                        </div>
                     </div>
-                    <h1>ReciFridge</h1>
-                    <p className="hero-subtitle">
-                        Keep track of what is in your fridge. Use ingredients before they go bad. Get meal ideas from what you already have.
-                    </p>
-                    <div className="hero-actions">
-                        <button className="hero-btn" type="button" onClick={() => navigate("fridge")}>
-                            Add Ingredients
-                        </button>
-                        <button className="hero-btn hero-btn-secondary" type="button" onClick={() => navigate("recipes")}>
-                            Get Recipe Ideas
-                        </button>
-                    </div>
-                    <div className="hero-highlights" aria-label="Key benefits">
-                        {highlights.map(item => (
-                            <p key={item} className="hero-highlight">{item}</p>
-                        ))}
+
+                    <div className="landing-hero-showcase" aria-hidden="true">
+                        <div className="showcase-card showcase-fridge">
+                            <p className="showcase-label">In your fridge</p>
+                            <ul className="showcase-list">
+                                <li><span>🥚</span><div><strong>Eggs</strong><small>2 days left</small></div></li>
+                                <li><span>🥬</span><div><strong>Kimchi</strong><small>5 days left</small></div></li>
+                                <li><span>🥛</span><div><strong>Milk</strong><small>Expires today</small></div></li>
+                            </ul>
+                        </div>
+                        <div className="showcase-card showcase-recipe">
+                            <p className="showcase-label">AI recipe pick</p>
+                            <strong>Simple Omelette</strong>
+                            <span>420 kcal · 15 min · Easy</span>
+                        </div>
+                        <div className="showcase-pill">
+                            <strong><CountUpNumber value={landingStats.ingredientCount || 8} /></strong>
+                            <span>ingredients tracked</span>
+                        </div>
                     </div>
                 </div>
 
-                <div className="scroll-down-arrow" aria-hidden="true">
-                    &#x2193; {/* ↓ Unicode arrow */}
-                </div>
+                <button
+                    type="button"
+                    className="scroll-down-arrow"
+                    aria-label="Scroll to explore"
+                    onClick={() => document.getElementById("stats-section")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                >
+                    &#x2193;
+                </button>
             </section>
 
 
-            <SectionReveal as="section" className="landing-stats" aria-label="Live ReciFridge statistics" delay={120}>
+            <SectionReveal as="section" id="stats-section" className="landing-stats" aria-label="Live ReciFridge statistics" delay={120}>
                 <div className="landing-stats-heading">
                     <p className="section-label">LIVE STATS</p>
                     <h2>{user ? "Your fridge data at a glance." : "Sign in to see your live fridge stats."}</h2>
@@ -397,7 +474,7 @@ function Home({ navigate, user }) {
                     </div>
                 )}
             </SectionReveal>
-            <SectionReveal as="section" className="landing-intro" aria-labelledby="landing-intro-title" delay={80}>
+            <SectionReveal as="section" id="about" className="landing-intro" aria-labelledby="landing-intro-title" delay={80}>
                 <div className="landing-intro-inner">
                     <p className="section-label">Why It Matters</p>
                     <h2 id="landing-intro-title">
@@ -440,7 +517,7 @@ function Home({ navigate, user }) {
                 ))}
             </section>
 
-            <SectionReveal as="section" className="team-section" aria-label="Meet our team" delay={100}>
+            <SectionReveal as="section" id="team" className="team-section" aria-label="Meet our team" delay={100}>
                 <div className="team-heading">
                     <p className="section-label">Our Team</p>
                     <h2>Meet the People <br/><span>Behind ReciFridge</span></h2>
@@ -548,7 +625,6 @@ function Home({ navigate, user }) {
                             <h4>Company</h4>
                             <a href="#about">About Us</a>
                             <a href="#team">Team</a>
-                            <a href="#contact">Contact</a>
                         </div>
                         <div className="footer-column">
                             <h4>Support</h4>
@@ -734,7 +810,7 @@ function AppModal({ open, onClose, titleId, className = "", as: Tag = "section",
         <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby={titleId}>
             <Tag className={`app-modal ${className}`} onSubmit={onSubmit}>
                 <button className="modal-close" type="button" onClick={onClose} aria-label="Close">
-                    X
+                    <CloseIcon />
                 </button>
                 {children}
             </Tag>
@@ -932,17 +1008,18 @@ function Fridge() {
     }
 
     return (
-        <main className="page-shell">
-            <section className="page-header fridge-header">
-                <div>
+        <main className="page-shell page-fridge">
+            <section className="app-page-header fridge-header">
+                <div className="app-page-header-copy">
                     <p className="eyebrow">Inventory</p>
                     <h1>Refrigerator Management</h1>
                     <p>Keep ingredients visible, searchable, and ready for AI recipe recommendations.</p>
                 </div>
-                <button className="primary-action" type="button" onClick={() => setShowIngredientModal(true)}>
-                    Add Ingredient
-                </button>
-                <div className="header-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+                <div className="app-page-header-actions">
+                    <button className="primary-action" type="button" onClick={() => setShowIngredientModal(true)}>
+                        Add Ingredient
+                    </button>
+                </div>
             </section>
 
             <section className="metrics-grid" aria-label="Fridge summary">
@@ -1031,7 +1108,13 @@ function Fridge() {
                                     {formatExpiry(item)}
                                 </small>
                             </button>
-                        )) : <div className="empty-state">No ingredients found.</div>}
+                        )) : (
+                            <EmptyState
+                                icon="🧊"
+                                title="No ingredients yet"
+                                description="Add your first item to start tracking expiry dates and recipe matches."
+                            />
+                        )}
                     </div>
                 </div>
             </section>
@@ -1348,16 +1431,18 @@ function Recipes() {
     }
 
     return (
-        <main className="page-shell">
-            <section className="page-header recipes-header">
-                <div>
+        <main className="page-shell page-recipes">
+            <section className="app-page-header recipes-header">
+                <div className="app-page-header-copy">
                     <p className="eyebrow">AI kitchen</p>
                     <h1>Recipe Recommendation</h1>
                     <p>Start with saved recipes, then ask AI to create ideas from your fridge inventory.</p>
                 </div>
-                <button className="primary-action" type="button" onClick={handleRecommend} disabled={loadingAi}>
-                    {loadingAi ? "Generating..." : "Generate AI Recipes"}
-                </button>
+                <div className="app-page-header-actions">
+                    <button className="primary-action" type="button" onClick={handleRecommend} disabled={loadingAi}>
+                        {loadingAi ? "Generating..." : "Generate AI Recipes"}
+                    </button>
+                </div>
             </section>
 
             {error && <p className="error-text page-message">{error}</p>}
@@ -1429,7 +1514,13 @@ function Recipes() {
                     <p>Reliable starter ideas with food photography, ingredients, and quick calorie context.</p>
                 </div>
                 <div className="recipe-grid">
-                    {recipes.map(recipe => <RecipeCard recipe={recipe} compact key={recipe.id} />)}
+                    {recipes.length === 0 ? (
+                        <EmptyState
+                            icon="📖"
+                            title="No saved recipes yet"
+                            description="Generate AI recipes from your fridge and save your favorites here."
+                        />
+                    ) : recipes.map(recipe => <RecipeCard recipe={recipe} compact key={recipe.id} />)}
                 </div>
             </section>
         </main>
@@ -1580,16 +1671,18 @@ function Meals() {
     const progress = Math.min(100, Math.round((total / 2000) * 100));
 
     return (
-        <main className="page-shell">
-            <section className="page-header">
-                <div>
+        <main className="page-shell page-meals">
+            <section className="app-page-header meals-header">
+                <div className="app-page-header-copy">
                     <p className="eyebrow">Nutrition log</p>
                     <h1>Meal Tracking</h1>
                     <p>Record meals and keep a quick view of daily calories.</p>
                 </div>
-                <button className="primary-action" type="button" onClick={() => setShowMealModal(true)}>
-                    Add Meal
-                </button>
+                <div className="app-page-header-actions">
+                    <button className="primary-action" type="button" onClick={() => setShowMealModal(true)}>
+                        Add Meal
+                    </button>
+                </div>
             </section>
 
             <section className="meal-overview-grid">
@@ -1613,6 +1706,13 @@ function Meals() {
                         </div>
                     </div>
                     <div className="inventory-list">
+                        {meals.length === 0 && (
+                            <EmptyState
+                                icon="🍽️"
+                                title="No meals logged today"
+                                description="Add breakfast, lunch, or dinner to track calories and macros."
+                            />
+                        )}
                         {meals.map(meal => (
                             <article className="list-item meal-row" key={meal.id}>
                                 <span>{meal.type}</span>
@@ -1778,15 +1878,16 @@ function Dashboard() {
     }
 
     if (!data) {
-        return <main className="page-shell"><section className="page-header"><h1>Dashboard</h1><p>Loading...</p></section></main>;
+        return <LoadingScreen label="Loading dashboard..." />;
     }
 
     const max = Math.max(...data.weeklyCalories, 1);
+    const dayLabels = recentWeekdayLabels(data.weeklyCalories.length);
 
     return (
-        <main className="page-shell">
-            <section className="page-header">
-                <div>
+        <main className="page-shell page-dashboard">
+            <section className="app-page-header dashboard-header">
+                <div className="app-page-header-copy">
                     <p className="eyebrow">Overview</p>
                     <h1>Dashboard</h1>
                     <p>Monitor calorie trends and nutrition balance.</p>
@@ -1825,8 +1926,9 @@ function Dashboard() {
                             const height = Math.max(12, Math.round((value / max) * 190));
                             return (
                                 <div className="bar-wrap" key={`${value}-${index}`}>
-                                    <span className="bar" style={{ height }} title={`${value} kcal`}></span>
-                                    <small>{value}</small>
+                                    <span className="bar" style={{ height }} title={`${dayLabels[index]}: ${value} kcal`}></span>
+                                    <small className="bar-value">{value}</small>
+                                    <small className="bar-day">{dayLabels[index]}</small>
                                 </div>
                             );
                         })}
@@ -1863,6 +1965,8 @@ function App() {
     const [authModalOpen, setAuthModalOpen] = useState(false);
     const [pendingPage, setPendingPage] = useState("");
 
+    useSmoothPageScroll();
+
     function navigate(nextPage) {
         if (nextPage === "auth") {
             setPendingPage("");
@@ -1882,6 +1986,7 @@ function App() {
 
         setPage(nextPage);
         window.history.pushState({}, "", pagePaths[nextPage]);
+        window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
     useEffect(() => {
@@ -1936,7 +2041,7 @@ function App() {
     }
 
     if (authLoading) {
-        return <main className="page-shell"><section className="page-header"><h1>Loading...</h1></section></main>;
+        return <LoadingScreen label="Starting ReciFridge..." />;
     }
 
     return (
