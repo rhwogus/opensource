@@ -546,9 +546,9 @@ function Home({ navigate, user }) {
 
                     <article className="team-card">
                         <div className="team-avatar">
-                            <span>N</span>
+                            <span>Y</span>
                         </div>
-                        <h3>나희</h3>
+                        <h3>Yoon Nahee</h3>
                         <p className="team-role">Frontend Developer</p>
                         <p className="team-bio">
                             Building responsive and accessible 
