@@ -165,7 +165,7 @@ textarea:hover:not(:focus) {
 }
 
 /*  NAVIGATION */
-/* ── Variables ── */
+
 :root {
     --green:       #00ff9f;
     --green-dark:  #00cc7e;
@@ -176,7 +176,7 @@ textarea:hover:not(:focus) {
     --nav-bg:      rgba(255, 255, 255, 0.9);
 }
 
-/* ── Nav shell ── */
+
 .site-nav {
     position: sticky;
     top: 0;
@@ -191,7 +191,7 @@ textarea:hover:not(:focus) {
     border-bottom: 0.5px solid var(--border);
 }
 
-/* ── Logo ── */
+/* Logo  */
 .logo-button {
     display: inline-flex;
     align-items: center;
@@ -237,7 +237,7 @@ textarea:hover:not(:focus) {
     color: var(--green-deep);
 }
 
-/* ── Nav links ── */
+/*Nav links*/
 .nav-links {
     display: flex;
     align-items: center;
@@ -311,7 +311,7 @@ textarea:hover:not(:focus) {
     font-weight: 700;
 }
 
-/* ── Auth area ── */
+/* Auth area */
 .nav-auth {
     display: flex;
     align-items: center;
@@ -329,7 +329,6 @@ textarea:hover:not(:focus) {
     white-space: nowrap;
 }
 
-/* ── Compact action button ── */
 .compact-action {
     padding: 7px 16px;
     border-radius: 8px;
@@ -355,7 +354,7 @@ textarea:hover:not(:focus) {
     background: var(--green-deep);
 }
 
-/* ── Mobile toggle ── */
+/* Mobile  menu toggle*/
 .menu-toggle {
     display: none;
     margin-left: auto;
@@ -391,7 +390,7 @@ textarea:hover:not(:focus) {
     box-shadow: 0 4px 12px rgba(0, 204, 126, 0.4);
 }
 
-/* ── Mobile breakpoint ── */
+/*Mobile breakpoint  */
 @media (max-width: 640px) {
     .menu-toggle {
         display: flex;
@@ -447,9 +446,9 @@ textarea:hover:not(:focus) {
     overflow: hidden;
     display: flex;
     min-height: 85vh;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
-    padding: clamp(40px, 6vw, 80px) max(20px, 5vw) clamp(30px, 4vw, 60px);
+    padding: clamp(10px, 2vw, 40px) max(20px, 5vw) clamp(30px, 4vw, 60px);
     background: url('./images/vegetables_landing.jpg') center/cover no-repeat;
 }
 
@@ -581,6 +580,7 @@ textarea:hover:not(:focus) {
 
 .landing-hero-showcase {
     position: relative;
+    top: 50px;
     min-height: 420px;
     animation: heroFadeInUp 1s 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
@@ -605,7 +605,7 @@ textarea:hover:not(:focus) {
 .showcase-recipe {
     position: absolute;
     right: 0;
-    bottom: 72px;
+    top: 120px;
     width: min(100%, 260px);
     padding: 18px 20px;
     display: grid;
@@ -615,7 +615,7 @@ textarea:hover:not(:focus) {
 .showcase-pill {
     position: absolute;
     left: 28%;
-    bottom: 0;
+    top: 280px;
     display: grid;
     gap: 4px;
     padding: 16px 22px;

@@ -258,7 +258,7 @@ function Nav({ page, navigate, user, onLogout }) {
                 {user ? (
                     <>
                         <span className="nav-username">{user.username}</span>
-                        <button className="compact-action" type="button" onClick={onLogout}>Logout</button>
+                        <button className="compact-action" type="button" onClick={onLogout}>Log Out</button>
                     </>
                 ) : (
                     <button className="compact-action primary" type="button" onClick={() => navigate("auth")}>Login</button>
